@@ -7,6 +7,12 @@ def array_decorator(function: Callable) -> Callable:
         return(np.array(list(map(function, array))))
     return(wrapper)
 
+def binary(array: np.ndarray) -> np.ndarray:
+    return(np.heaviside(array, 1))
+
+def binary_derivative(array: np.ndarray) -> np.ndarray:
+    return(np.zeros_like(array))
+
 def linear(array: np.ndarray) -> np.ndarray:
     return(array)
 
@@ -32,6 +38,7 @@ def L_ReLU_derivative(array: np.ndarray) -> np.ndarray:
     return(abs(np.maximum(0.1*np.sign(array), np.sign(array))))
 
 Activators: dict[str, tuple[Callable[[np.ndarray], np.ndarray], Callable[[np.ndarray], np.ndarray]]] = {
+"binary": (binary, binary_derivative),
 "linear": (linear, linear_derivative), 
 "sigmoid": (sigmoid, sigmoid_derivative), 
 "ReLU": (ReLU, ReLU_derivative), 
