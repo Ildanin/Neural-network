@@ -25,6 +25,12 @@ def sigmoid(array: np.ndarray) -> np.ndarray:
 def sigmoid_derivative(array: np.ndarray) -> np.ndarray:
     return((e ** array) / ((e ** array + 1)**2))
 
+def softsign(array: np.ndarray) -> np.ndarray:
+    return(array/(1 + np.absolute(array)))
+
+def softsign_derivative(array: np.ndarray) -> np.ndarray:
+    return(1/(1 + np.absolute(array))**2)
+
 def ReLU(array: np.ndarray) -> np.ndarray:
     return(np.maximum(0, array))
 
@@ -37,10 +43,13 @@ def L_ReLU(array: np.ndarray) -> np.ndarray:
 def L_ReLU_derivative(array: np.ndarray) -> np.ndarray:
     return(abs(np.maximum(0.1*np.sign(array), np.sign(array))))
 
+print(softsign_derivative(np.array(range(-3, 4))))
+
 Activators: dict[str, tuple[Callable[[np.ndarray], np.ndarray], Callable[[np.ndarray], np.ndarray]]] = {
-"binary": (binary, binary_derivative),
+"binary": (binary, binary_derivative), 
 "linear": (linear, linear_derivative), 
 "sigmoid": (sigmoid, sigmoid_derivative), 
+"softsign": (softsign, softsign_derivative),
 "ReLU": (ReLU, ReLU_derivative), 
 "L_ReLU": (L_ReLU, L_ReLU_derivative)
 }
