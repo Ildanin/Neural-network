@@ -43,8 +43,6 @@ def L_ReLU(array: np.ndarray) -> np.ndarray:
 def L_ReLU_derivative(array: np.ndarray) -> np.ndarray:
     return(abs(np.maximum(0.1*np.sign(array), np.sign(array))))
 
-print(softsign_derivative(np.array(range(-3, 4))))
-
 Activators: dict[str, tuple[Callable[[np.ndarray], np.ndarray], Callable[[np.ndarray], np.ndarray]]] = {
 "binary": (binary, binary_derivative), 
 "linear": (linear, linear_derivative), 
