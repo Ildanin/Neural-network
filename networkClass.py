@@ -1,6 +1,6 @@
 import numpy as np
 from time import perf_counter
-from .utiles import random_array, gradient_product, gradient_sum
+from .utiles import random_array, gradient_product, gradient_sum, print_info
 from .activators import Activators
 
 class Network:
@@ -152,7 +152,7 @@ class Network:
                     cost += self.unaverage_cost(answer)
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
-                print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
+                print_info(i, cycles, cost, data_size * self.info[-1], runtime)
 
     def train_stochastic(self, dataset: list[np.ndarray], 
                         answerset: list[np.ndarray], 
@@ -181,7 +181,7 @@ class Network:
                     cost += self.unaverage_cost(answerset[rand])
                 self.modify(gradient, learning_rate / batchsize)
                 runtime = perf_counter() - start_time
-                print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / batchsize, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
+                print_info(i, cycles, cost, batchsize * self.info[-1], runtime)
 
     def train_momentum(self, dataset: list[np.ndarray], 
                        answerset: list[np.ndarray], 
@@ -212,7 +212,7 @@ class Network:
                 momentum = gradient
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
-                print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
+                print_info(i, cycles, cost, data_size * self.info[-1], runtime)
 
     def train_stochastic_momentum(self, dataset: list[np.ndarray], 
                                   answerset: list[np.ndarray], 
@@ -247,7 +247,7 @@ class Network:
                 momentum = gradient
                 self.modify(gradient, learning_rate/batchsize)
                 runtime = perf_counter() - start_time
-                print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / batchsize, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
+                print_info(i, cycles, cost, batchsize * self.info[-1], runtime)
 
 
 def load(filename: str) -> Network:

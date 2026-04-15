@@ -9,3 +9,6 @@ def gradient_product(gradient: list[tuple[np.ndarray, np.ndarray]], coef: float)
 
 def gradient_sum(gradient1: list[tuple[np.ndarray, np.ndarray]], gradient2: list[tuple[np.ndarray, np.ndarray]]) -> list[tuple[np.ndarray, np.ndarray]]:
     return([(layer_grad1[0] + layer_grad2[0], layer_grad1[1] + layer_grad2[1]) for layer_grad1, layer_grad2 in zip(gradient1, gradient2)])
+
+def print_info(finished_cycles: int, all_cycles: int, cost: float, data_size: int, runtime: float) -> None:
+    print(f'Cycles finished: {finished_cycles}/{all_cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * all_cycles / finished_cycles, 1)}')
