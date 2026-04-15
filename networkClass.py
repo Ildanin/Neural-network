@@ -94,25 +94,25 @@ class Network:
             counter += 1
         return(counter-1, neuron_number)
     
-    def process(self, data: np.ndarray | list) -> np.ndarray:
-        self.layer_results = [np.array(data)]
+    def process(self, data: np.ndarray) -> np.ndarray:
+        self.layer_results = [data]
         for weight, bias in zip(self.weights[:-1], self.biases[:-1]):
             self.layer_results.append(self.func(np.dot(weight, self.layer_results[-1]) + bias))
         self.layer_results.append(self.norm(np.dot(self.weights[-1], self.layer_results[-1]) + self.biases[-1]))
         return(self.layer_results[-1])
     
-    def backpropagate(self, data: np.ndarray | list, answer: np.ndarray | list) -> list[tuple[np.ndarray, np.ndarray]]:
+    def backpropagate(self, data: np.ndarray, answer: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
         "Returns the list of gradient for weights and biases"
         self.process(data)
         gradient: list[tuple[np.ndarray, np.ndarray]] = []
         "chain is a vector that represents the influence on the cost function for each neuron's output in a layer"
-        chain = 2 * (self.layer_results[-1] - np.array(answer)) * self.norm_derivative(self.layer_results[-1])
+        chain = 2 * (self.layer_results[-1] - answer) * self.norm_derivative(self.layer_results[-1])
         weight_gradient = self.layer_results[-2] * np.atleast_2d(chain).T
         bias_gradient = chain
         gradient.insert(0, (weight_gradient, bias_gradient))
         
         for i in range(len(self.info)-2, 0, -1):
-            chain = np.array(self.func_derivative(self.layer_results[i]) * np.dot(self.weights[i].T, chain))
+            chain = self.func_derivative(self.layer_results[i]) * np.dot(self.weights[i].T, chain)
             weight_gradient = self.layer_results[i-1] * np.atleast_2d(chain).T
             bias_gradient = chain
             gradient.insert(0, (weight_gradient, bias_gradient))
@@ -123,11 +123,11 @@ class Network:
             self.weights[i] += -learning_rate * layer[0]
             self.biases[i]  += -learning_rate * layer[1]
     
-    def cost(self, answer: np.ndarray | list) -> float:
+    def cost(self, answer: np.ndarray) -> float:
         return(float(sum((self.layer_results[-1] - np.array(answer))**2)))
     
-    def train_vanilla(self, dataset: list[np.ndarray] | list[list], 
-                      answerset: list[np.ndarray] | list[list], 
+    def train_vanilla(self, dataset: list[np.ndarray], 
+                      answerset: list[np.ndarray], 
                       learning_rate: float, 
                       cycles: int = 1, 
                       display_progress: bool = False) -> None:
@@ -151,8 +151,8 @@ class Network:
                 runtime = perf_counter() - start_time
                 print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
 
-    def train_stochastic(self, dataset: list[np.ndarray] | list[list], 
-                        answerset: list[np.ndarray] | list[list], 
+    def train_stochastic(self, dataset: list[np.ndarray], 
+                        answerset: list[np.ndarray], 
                         learning_rate: float, 
                         cycles: int = 1, 
                         batchsize: int = 1, display_progress: bool = False) -> None:
@@ -180,8 +180,8 @@ class Network:
                 runtime = perf_counter() - start_time
                 print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / batchsize, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
 
-    def train_momentum(self, dataset: list[np.ndarray] | list[list], 
-                       answerset: list[np.ndarray] | list[list], 
+    def train_momentum(self, dataset: list[np.ndarray], 
+                       answerset: list[np.ndarray], 
                        learning_rate: float, momentum_conservation: float, 
                        cycles: int = 1, 
                        display_progress: bool = False) -> None:
@@ -211,8 +211,8 @@ class Network:
                 runtime = perf_counter() - start_time
                 print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
 
-    def train_stochastic_momentum(self, dataset: list[np.ndarray] | list[list], 
-                                  answerset: list[np.ndarray] | list[list], 
+    def train_stochastic_momentum(self, dataset: list[np.ndarray], 
+                                  answerset: list[np.ndarray], 
                                   learning_rate: float, momentum_conservation: float, 
                                   cycles: int = 1, batchsize: int = 1, 
                                   display_progress: bool = False) -> None:
