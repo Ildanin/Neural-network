@@ -87,7 +87,7 @@ class Network:
         file.close()
     
     def layer_definer(self, neuron_number: int) -> tuple[int, int]: 
-        'returns layer number(first after input layer is 0) and neuron number(in that layer)'
+        "returns layer number(first after input layer is 0) and neuron number(in that layer)"
         counter = 1
         while neuron_number + 1 - self.info[counter] > 0:
             neuron_number -= self.info[counter]
@@ -123,8 +123,11 @@ class Network:
             self.weights[i] += -learning_rate * layer[0]
             self.biases[i]  += -learning_rate * layer[1]
     
+    def unaverage_cost(self, answer: np.ndarray) -> float:
+        return(float(sum((self.layer_results[-1] - answer)**2)))
+
     def cost(self, answer: np.ndarray) -> float:
-        return(float(sum((self.layer_results[-1] - np.array(answer))**2)))
+        return(float(sum((self.layer_results[-1] - answer)**2)) / self.info[-1])
     
     def train_vanilla(self, dataset: list[np.ndarray], 
                       answerset: list[np.ndarray], 
@@ -143,10 +146,10 @@ class Network:
             data_size = min(len(dataset), len(answerset))
             for i in range(1, cycles+1):
                 gradient = self.backpropagate(dataset[0], answerset[0])
-                cost = self.cost(answerset[0])
+                cost = self.unaverage_cost(answerset[0])
                 for data, answer in zip(dataset[1:], answerset[1:]):
                     gradient = gradient_sum(gradient, self.backpropagate(data, answer))
-                    cost += self.cost(answer)
+                    cost += self.unaverage_cost(answer)
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
                 print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
@@ -171,11 +174,11 @@ class Network:
             for i in range(1, cycles+1):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand], answerset[rand])
-                cost = self.cost(answerset[rand])
+                cost = self.unaverage_cost(answerset[rand])
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
                     gradient = gradient_sum(gradient, self.backpropagate(dataset[rand], answerset[rand]))
-                    cost += self.cost(answerset[rand])
+                    cost += self.unaverage_cost(answerset[rand])
                 self.modify(gradient, learning_rate / batchsize)
                 runtime = perf_counter() - start_time
                 print(f'Cycles finished: {i}/{cycles} | Cycle cost: {round(cost / batchsize, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * cycles/i, 1)}')
@@ -201,10 +204,10 @@ class Network:
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
             for i in range(1, cycles+1):
                 gradient = self.backpropagate(dataset[0], answerset[0])
-                cost = self.cost(answerset[0])
+                cost = self.unaverage_cost(answerset[0])
                 for data, answer in zip(dataset[1:], answerset[1:]):
                     gradient = gradient_sum(gradient, self.backpropagate(data, answer))
-                    cost += self.cost(answer)
+                    cost += self.unaverage_cost(answer)
                 gradient = gradient_sum(gradient, gradient_product(momentum, momentum_conservation))
                 momentum = gradient
                 self.modify(gradient, learning_rate/data_size)
@@ -235,11 +238,11 @@ class Network:
             for i in range(1, cycles+1):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand], answerset[rand])
-                cost = self.cost(answerset[rand])
+                cost = self.unaverage_cost(answerset[rand])
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
                     gradient = gradient_sum(gradient, self.backpropagate(dataset[rand], answerset[rand]))
-                    cost += self.cost(answerset[rand])
+                    cost += self.unaverage_cost(answerset[rand])
                 gradient = gradient_sum(gradient, gradient_product(momentum, momentum_conservation))
                 momentum = gradient
                 self.modify(gradient, learning_rate/batchsize)
