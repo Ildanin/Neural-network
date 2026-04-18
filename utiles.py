@@ -1,4 +1,5 @@
 import numpy as np
+from sys import stdout
 rng = np.random.default_rng()
 
 def random_array(low: float, high: float, size: int | tuple[int] | tuple[int, int]) -> np.ndarray:
@@ -11,4 +12,6 @@ def gradient_sum(gradient1: list[tuple[np.ndarray, np.ndarray]], gradient2: list
     return([(layer_grad1[0] + layer_grad2[0], layer_grad1[1] + layer_grad2[1]) for layer_grad1, layer_grad2 in zip(gradient1, gradient2)])
 
 def print_info(finished_cycles: int, all_cycles: int, cost: float, data_size: int, runtime: float) -> None:
-    print(f'Cycles finished: {finished_cycles}/{all_cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * all_cycles / finished_cycles, 1)}')
+    stdout.write('\r')
+    stdout.flush()
+    stdout.write(f"Cycles finished: {finished_cycles}/{all_cycles} | Cycle cost: {round(cost / data_size, 3)} | Runtime: {round(runtime, 1)}/{round(runtime * all_cycles / finished_cycles, 1)}")

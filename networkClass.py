@@ -153,6 +153,7 @@ class Network:
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
                 print_info(i, cycles, cost, data_size * self.info[-1], runtime)
+            print()
 
     def train_stochastic(self, dataset: list[np.ndarray], 
                         answerset: list[np.ndarray], 
@@ -182,6 +183,7 @@ class Network:
                 self.modify(gradient, learning_rate / batchsize)
                 runtime = perf_counter() - start_time
                 print_info(i, cycles, cost, batchsize * self.info[-1], runtime)
+            print()
 
     def train_momentum(self, dataset: list[np.ndarray], 
                        answerset: list[np.ndarray], 
@@ -213,6 +215,7 @@ class Network:
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
                 print_info(i, cycles, cost, data_size * self.info[-1], runtime)
+            print()
 
     def train_stochastic_momentum(self, dataset: list[np.ndarray], 
                                   answerset: list[np.ndarray], 
@@ -248,6 +251,7 @@ class Network:
                 self.modify(gradient, learning_rate/batchsize)
                 runtime = perf_counter() - start_time
                 print_info(i, cycles, cost, batchsize * self.info[-1], runtime)
+            print()
 
 
 def load(filename: str) -> Network:

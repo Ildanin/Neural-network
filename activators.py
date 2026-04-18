@@ -1,5 +1,5 @@
 import numpy as np
-from collections.abc import Callable
+from typing import Callable
 from math import e
 
 def array_decorator(function: Callable) -> Callable:
