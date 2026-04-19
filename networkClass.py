@@ -1,6 +1,7 @@
 import numpy as np
 from time import perf_counter
 from .utiles import random_array, gradient_product, gradient_sum
+from .datasetClass import DataSample, Dataset
 from .progressBar import ProgressBar
 from .activators import Activators
 
@@ -102,12 +103,12 @@ class Network:
         self.layer_results.append(self.norm(np.dot(self.weights[-1], self.layer_results[-1]) + self.biases[-1]))
         return(self.layer_results[-1])
     
-    def backpropagate(self, data: np.ndarray, answer: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
-        "Returns the list of gradient for weights and biases"
-        self.process(data)
+    def backpropagate(self, sample: DataSample) -> list[tuple[np.ndarray, np.ndarray]]:
+        "Returns the gradient for weights and biases"
+        self.process(sample.input_value)
         gradient: list[tuple[np.ndarray, np.ndarray]] = []
         "chain is a vector that represents the influence on the cost function for each neuron's output in a layer"
-        chain = 2 * (self.layer_results[-1] - answer) * self.norm_derivative(self.layer_results[-1])
+        chain = 2 * (self.layer_results[-1] - sample.output_value) * self.norm_derivative(self.layer_results[-1])
         weight_gradient = self.layer_results[-2] * np.atleast_2d(chain).T
         bias_gradient = chain
         gradient.insert(0, (weight_gradient, bias_gradient))
@@ -128,91 +129,87 @@ class Network:
         return(float(sum((self.layer_results[-1] - answer)**2)))
 
     def cost(self, answer: np.ndarray) -> float:
-        return(float(sum((self.layer_results[-1] - answer)**2)) / self.info[-1])
+        return(self.unaverage_cost(answer) / self.info[-1])
     
-    def train_vanilla(self, dataset: list[np.ndarray], 
-                      answerset: list[np.ndarray], 
+    def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
                       cycles: int = 1, 
                       display_progress: bool = False) -> None:
         if display_progress == False:
-            data_size = min(len(dataset), len(answerset))
             for _ in range(cycles):
-                gradient = self.backpropagate(dataset[0], answerset[0])
-                for data, answer in zip(dataset[1:], answerset[1:]):
-                    gradient = gradient_sum(gradient, self.backpropagate(data, answer))
-                self.modify(gradient, learning_rate/data_size)
+                gradient = self.backpropagate(dataset[0])
+                for data in dataset:
+                    gradient = gradient_sum(gradient, self.backpropagate(data))
+                self.modify(gradient, learning_rate / len(dataset))
         else:
             start_time = perf_counter()
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             for i in range(cycles):
-                gradient = self.backpropagate(dataset[0], answerset[0])
-                cost = self.unaverage_cost(answerset[0])
-                for data, answer in zip(dataset[1:], answerset[1:]):
-                    gradient = gradient_sum(gradient, self.backpropagate(data, answer))
-                    cost += self.unaverage_cost(answer)
+                gradient = self.backpropagate(dataset[0])
+                cost = self.unaverage_cost(dataset[0].output_value)
+                for data in dataset[1:]:
+                    gradient = gradient_sum(gradient, self.backpropagate(data))
+                    cost += self.unaverage_cost(data.output_value)
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
                 if i == 0:
                     progress_bar = ProgressBar("Vanilla", cycles, runtime)
                 progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
 
-    def train_stochastic(self, dataset: list[np.ndarray], 
-                        answerset: list[np.ndarray], 
+    def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
                         cycles: int = 1, 
                         batchsize: int = 1, display_progress: bool = False) -> None:
         if display_progress == False:
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             for _ in range(cycles):
                 rand = np.random.randint(0, data_size)
-                gradient = self.backpropagate(dataset[rand], answerset[rand])
+                gradient = self.backpropagate(dataset[rand])
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
-                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand], answerset[rand]))
+                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand]))
                 self.modify(gradient, learning_rate / batchsize)
         else:
             start_time = perf_counter()
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             for i in range(cycles):
                 rand = np.random.randint(0, data_size)
-                gradient = self.backpropagate(dataset[rand], answerset[rand])
-                cost = self.unaverage_cost(answerset[rand])
+                gradient = self.backpropagate(dataset[rand])
+                cost = self.unaverage_cost(dataset[rand].output_value)
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
-                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand], answerset[rand]))
-                    cost += self.unaverage_cost(answerset[rand])
+                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand]))
+                    cost += self.unaverage_cost(dataset[rand].output_value)
                 self.modify(gradient, learning_rate / batchsize)
                 runtime = perf_counter() - start_time
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic", cycles, runtime)
                 progress_bar(i+1, runtime, cost / (batchsize * self.info[-1]))
 
-    def train_momentum(self, dataset: list[np.ndarray], 
-                       answerset: list[np.ndarray], 
+    def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
                        cycles: int = 1, 
                        display_progress: bool = False) -> None:
         if display_progress == False:
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
             for _ in range(cycles):
-                gradient = self.backpropagate(dataset[0], answerset[0])
-                for data, answer in zip(dataset[1:], answerset[1:]):
-                    gradient = gradient_sum(gradient, self.backpropagate(data, answer))
+                gradient = self.backpropagate(dataset[0])
+                for data in dataset[1:]:
+                    gradient = gradient_sum(gradient, self.backpropagate(data))
                 gradient = gradient_sum(gradient, gradient_product(momentum, momentum_conservation))
                 momentum = gradient
                 self.modify(gradient, learning_rate/data_size)
         else:
             start_time = perf_counter()
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
             for i in range(cycles):
-                gradient = self.backpropagate(dataset[0], answerset[0])
-                cost = self.unaverage_cost(answerset[0])
-                for data, answer in zip(dataset[1:], answerset[1:]):
-                    gradient = gradient_sum(gradient, self.backpropagate(data, answer))
-                    cost += self.unaverage_cost(answer)
+                gradient = self.backpropagate(dataset[0])
+                cost = self.unaverage_cost(dataset[0].output_value)
+                for data in dataset[1:]:
+                    gradient = gradient_sum(gradient, self.backpropagate(data))
+                    cost += self.unaverage_cost(data.output_value)
                 gradient = gradient_sum(gradient, gradient_product(momentum, momentum_conservation))
                 momentum = gradient
                 self.modify(gradient, learning_rate/data_size)
@@ -221,35 +218,34 @@ class Network:
                     progress_bar = ProgressBar("Momentum", cycles, runtime)
                 progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
 
-    def train_stochastic_momentum(self, dataset: list[np.ndarray], 
-                                  answerset: list[np.ndarray], 
+    def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
                                   cycles: int = 1, batchsize: int = 1, 
                                   display_progress: bool = False) -> None:
         if display_progress == False:
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             for _ in range(cycles):
                 rand = np.random.randint(0, data_size)
-                gradient = self.backpropagate(dataset[rand], answerset[rand])
+                gradient = self.backpropagate(dataset[rand])
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
-                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand], answerset[rand]))
+                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand]))
                 gradient = gradient_sum(gradient, gradient_product(momentum, momentum_conservation))
                 momentum = gradient
                 self.modify(gradient, learning_rate/data_size)
         else:
             start_time = perf_counter()
-            data_size = min(len(dataset), len(answerset))
+            data_size = len(dataset)
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
             for i in range(cycles):
                 rand = np.random.randint(0, data_size)
-                gradient = self.backpropagate(dataset[rand], answerset[rand])
-                cost = self.unaverage_cost(answerset[rand])
+                gradient = self.backpropagate(dataset[rand])
+                cost = self.unaverage_cost(dataset[rand].output_value)
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
-                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand], answerset[rand]))
-                    cost += self.unaverage_cost(answerset[rand])
+                    gradient = gradient_sum(gradient, self.backpropagate(dataset[rand]))
+                    cost += self.unaverage_cost(dataset[rand].output_value)
                 gradient = gradient_sum(gradient, gradient_product(momentum, momentum_conservation))
                 momentum = gradient
                 self.modify(gradient, learning_rate/batchsize)
