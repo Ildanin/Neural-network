@@ -22,10 +22,10 @@ class ProgressBar:
         runtime_line = f"{round(runtime, 1)}/{round(runtime / self.percent, 1)}s".center(self.runtime_width)
         sample_cost_line = f"{round(sample_cost, 3)}".center(13)
         val_cost_line = f"{round(val_cost, 3)}".center(17)
-        print('\r', self.bar(), cycles_line, runtime_line, sample_cost_line, val_cost_line, '', sep='|', flush=True, end='')
+        print(f"\r{self.bar()}{cycles_line}|{runtime_line}|{sample_cost_line}|{val_cost_line}|", flush=True, end='')
         if finished_cycles == self.all_cycles:
             print()
     
     def bar(self) -> str:
         filled = ceil(self.percent * self.bar_length)
-        return '█'*(filled) + ' '*(self.bar_length - filled)
+        return f"|{'█'*(filled)}{' '*(self.bar_length - filled)}|"
