@@ -1,6 +1,7 @@
 import numpy as np
 from time import perf_counter
-from .utiles import random_array, gradient_product, gradient_sum, print_info
+from .utiles import random_array, gradient_product, gradient_sum
+from .progressBar import ProgressBar
 from .activators import Activators
 
 class Network:
@@ -144,7 +145,7 @@ class Network:
         else:
             start_time = perf_counter()
             data_size = min(len(dataset), len(answerset))
-            for i in range(1, cycles+1):
+            for i in range(cycles):
                 gradient = self.backpropagate(dataset[0], answerset[0])
                 cost = self.unaverage_cost(answerset[0])
                 for data, answer in zip(dataset[1:], answerset[1:]):
@@ -152,8 +153,9 @@ class Network:
                     cost += self.unaverage_cost(answer)
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
-                print_info(i, cycles, cost, data_size * self.info[-1], runtime)
-            print()
+                if i == 0:
+                    progress_bar = ProgressBar("Vanilla", cycles, runtime)
+                progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
 
     def train_stochastic(self, dataset: list[np.ndarray], 
                         answerset: list[np.ndarray], 
@@ -172,7 +174,7 @@ class Network:
         else:
             start_time = perf_counter()
             data_size = min(len(dataset), len(answerset))
-            for i in range(1, cycles+1):
+            for i in range(cycles):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand], answerset[rand])
                 cost = self.unaverage_cost(answerset[rand])
@@ -182,8 +184,9 @@ class Network:
                     cost += self.unaverage_cost(answerset[rand])
                 self.modify(gradient, learning_rate / batchsize)
                 runtime = perf_counter() - start_time
-                print_info(i, cycles, cost, batchsize * self.info[-1], runtime)
-            print()
+                if i == 0:
+                    progress_bar = ProgressBar("Stochastic", cycles, runtime)
+                progress_bar(i+1, runtime, cost / (batchsize * self.info[-1]))
 
     def train_momentum(self, dataset: list[np.ndarray], 
                        answerset: list[np.ndarray], 
@@ -204,7 +207,7 @@ class Network:
             start_time = perf_counter()
             data_size = min(len(dataset), len(answerset))
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
-            for i in range(1, cycles+1):
+            for i in range(cycles):
                 gradient = self.backpropagate(dataset[0], answerset[0])
                 cost = self.unaverage_cost(answerset[0])
                 for data, answer in zip(dataset[1:], answerset[1:]):
@@ -214,8 +217,9 @@ class Network:
                 momentum = gradient
                 self.modify(gradient, learning_rate/data_size)
                 runtime = perf_counter() - start_time
-                print_info(i, cycles, cost, data_size * self.info[-1], runtime)
-            print()
+                if i == 0:
+                    progress_bar = ProgressBar("Momentum", cycles, runtime)
+                progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
 
     def train_stochastic_momentum(self, dataset: list[np.ndarray], 
                                   answerset: list[np.ndarray], 
@@ -238,7 +242,7 @@ class Network:
             start_time = perf_counter()
             data_size = min(len(dataset), len(answerset))
             momentum = [(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)]
-            for i in range(1, cycles+1):
+            for i in range(cycles):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand], answerset[rand])
                 cost = self.unaverage_cost(answerset[rand])
@@ -250,8 +254,9 @@ class Network:
                 momentum = gradient
                 self.modify(gradient, learning_rate/batchsize)
                 runtime = perf_counter() - start_time
-                print_info(i, cycles, cost, batchsize * self.info[-1], runtime)
-            print()
+                if i == 0:
+                    progress_bar = ProgressBar("Stochastic + Momentum", cycles, runtime)
+                progress_bar(i+1, runtime, cost / (batchsize * self.info[-1]))
 
 
 def load(filename: str) -> Network:
