@@ -1,6 +1,6 @@
 import numpy as np
 from time import perf_counter
-from .utiles import random_array, gradient_product, gradient_sum
+from .utiles import random_array
 from .datasetClass import DataSample, Dataset
 from .progressBar import ProgressBar
 from .gradientClass import Gradient
