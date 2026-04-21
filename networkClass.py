@@ -8,7 +8,7 @@ from .activators import Activators
 
 class Network:
     def __init__(self, info: list[int], activator: str, normalizer: str | None = None, 
-                 factor_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
+                 weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
         self.info = info
         self.activator = activator
         self.func, self.func_derivative = Activators[activator]
@@ -18,13 +18,13 @@ class Network:
         else:
             self.norm, self.norm_derivative = Activators[normalizer]
             self.normalizer = normalizer
-        self.factor_range = factor_range
+        self.weight_range = weight_range
         self.bias_range = bias_range
         self.weights: list[np.ndarray] = []
         self.biases: list[np.ndarray] = []
         #self.layer_dictionary = [self.layer_definer(i) for i in range(sum(info[1:]))]
         for i in range(1, len(info)):
-            self.weights.append(random_array(factor_range[0], factor_range[1], size=(info[i], info[i-1])))
+            self.weights.append(random_array(weight_range[0], weight_range[1], size=(info[i], info[i-1])))
             self.biases.append(random_array(bias_range[0], bias_range[1], size=(info[i])))
     
     def __str__(self, layer_ID: int | None = None, separator: str = '==========================') -> str:
@@ -52,7 +52,7 @@ class Network:
         self.weights: list[np.ndarray] = []
         self.biases: list[np.ndarray] = []
         for i in range(1, len(self.info)):
-            self.weights.append(random_array(self.factor_range[0], self.factor_range[1], size=(self.info[i], self.info[i-1])))
+            self.weights.append(random_array(self.weight_range[0], self.weight_range[1], size=(self.info[i], self.info[i-1])))
             self.biases.append(random_array(self.bias_range[0], self.bias_range[1], size=(self.info[i])))
 
     def copy(self) -> object:
