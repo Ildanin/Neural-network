@@ -27,5 +27,5 @@ class ProgressBar:
             print()
     
     def bar(self) -> str:
-        filled = ceil(self.percent * self.bar_length)
+        filled = round(self.percent * self.bar_length)
         return f"|{'█'*(filled)}{' '*(self.bar_length - filled)}|"
