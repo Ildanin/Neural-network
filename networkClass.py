@@ -4,33 +4,30 @@ from .utiles import random_array
 from .datasetClass import DataSample, Dataset
 from .progressBar import ProgressBar
 from .gradientClass import Gradient
-from .activators import Activators
+from .layerClass import Layer, random_layer
 
 class Network:
     def __init__(self, info: list[int], activator: str, normalizer: str | None = None, 
                  weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
+        if len(info) < 2:
+            return None
         self.info = info
         self.activator = activator
-        self.func, self.func_derivative = Activators[activator]
         if normalizer == None:
-            self.norm, self.norm_derivative = Activators[activator]
-            self.normalizer = normalizer = activator
+            self.normalizer = activator
         else:
-            self.norm, self.norm_derivative = Activators[normalizer]
             self.normalizer = normalizer
         self.weight_range = weight_range
         self.bias_range = bias_range
-        self.weights: list[np.ndarray] = []
-        self.biases: list[np.ndarray] = []
-        #self.layer_dictionary = [self.layer_definer(i) for i in range(sum(info[1:]))]
-        for i in range(1, len(info)):
-            self.weights.append(random_array(weight_range[0], weight_range[1], size=(info[i], info[i-1])))
-            self.biases.append(random_array(bias_range[0], bias_range[1], size=(info[i])))
+        self.layers: list[Layer] = []
+        for i in range(1, len(self.info)-1):
+            self.layers.append(random_layer((self.info[i], self.info[i-1]), self.weight_range, self.bias_range, self.activator))
+        self.layers.append(random_layer((self.info[-1], self.info[-2]), self.weight_range, self.bias_range, self.normalizer))
     
     def __str__(self, layer_ID: int | None = None, separator: str = '==========================') -> str:
         "Layer ID 0 means the first layer after the input layer"
         if layer_ID == None:
-            layers = [np.append(weight, np.reshape(bias, (-1, 1)), 1) for weight, bias in zip(self.weights, self.biases)]
+            layers = [layer.glue() for layer in self.layers]
             string = ''
             for i in range(len(self.info)-1):
                 string += f'{separator} \n'
@@ -39,7 +36,7 @@ class Network:
             string += separator
             return(string)
         elif 0 <= layer_ID <= len(self.info) - 2:
-            layer = np.append(self.weights[layer_ID], np.reshape(self.biases[layer_ID], (-1, 1)), 1)
+            layer = self.layers[layer_ID].glue()
             string =  f'separator \n'
             string += f'Layer {layer_ID} \n'
             string += f'{layer} \n'
@@ -49,26 +46,22 @@ class Network:
             raise ValueError(f"Network has no layer with such ID({layer_ID})")
     
     def flush(self) -> None:
-        self.weights: list[np.ndarray] = []
-        self.biases: list[np.ndarray] = []
-        for i in range(1, len(self.info)):
-            self.weights.append(random_array(self.weight_range[0], self.weight_range[1], size=(self.info[i], self.info[i-1])))
-            self.biases.append(random_array(self.bias_range[0], self.bias_range[1], size=(self.info[i])))
-
+        for layer in self.layers:
+            layer.flush(self.weight_range, self.bias_range)
+    
     def copy(self) -> object:
         net = Network(self.info, self.activator, self.normalizer)
-        net.weights = [layer_weights.copy() for layer_weights in self.weights]
-        net.biases = [layer_biases.copy() for layer_biases in self.biases]
+        net.layers = [layer.copy() for layer in self.layers]
         return(net)
-
+    
     def save(self, filename: str) -> None:
         file = open(filename, 'w')
         file.write(' '.join([str(layer_info) for layer_info in self.info]))
         file.write('\n' + self.activator)
         file.write('\n' + self.normalizer)
-        for weights, biases in zip(self.weights, self.biases):
-            file.writelines(['\n' + str(weight) for weight in weights.flatten()])
-            file.writelines(['\n' + str(bias) for bias in biases.flatten()])
+        for layer in self.layers:
+            file.writelines(['\n' + str(coef) for coef in layer.weight.flatten()])
+            file.writelines(['\n' + str(coef) for coef in layer.bias.flatten()])
         file.close()
     
     def load(self, filename: str) -> None:
@@ -76,32 +69,24 @@ class Network:
         self.info = [int(n) for n in file.readline().split()]
         self.activator = file.readline()[:-1]
         self.normalizer = file.readline()[:-1]
-        self.func, self.func_derivative = Activators[self.activator]
-        self.norm, self.norm_derivative = Activators[self.normalizer]
-        self.weights: list[np.ndarray] = []
-        self.biases: list[np.ndarray] = []
+        self.layers = []
         values = [float(x[:-1]) for x in file.readlines()]
         start = 0
         for i in range(1, len(self.info)):
-            self.weights.append(np.reshape(values[start : (start + self.info[i] * self.info[i-1])], (self.info[i], self.info[i-1])))
+            weight = np.reshape(values[start : (start + self.info[i] * self.info[i-1])], (self.info[i], self.info[i-1]))
             start += self.info[i] * self.info[i-1]
-            self.biases.append(np.array(values[start : (start + self.info[i])]))
+            bias = np.array(values[start : (start + self.info[i])])
             start += self.info[i]
+            if i != len(self.info)-1:
+                self.layers.append(Layer(weight, bias, self.activator))
+            else:
+                self.layers.append(Layer(weight, bias, self.normalizer))
         file.close()
-    
-    def layer_definer(self, neuron_number: int) -> tuple[int, int]: 
-        "returns layer number(first after input layer is 0) and neuron number(in that layer)"
-        counter = 1
-        while neuron_number + 1 - self.info[counter] > 0:
-            neuron_number -= self.info[counter]
-            counter += 1
-        return(counter-1, neuron_number)
     
     def process(self, data: np.ndarray) -> np.ndarray:
         self.layer_results = [data]
-        for weight, bias in zip(self.weights[:-1], self.biases[:-1]):
-            self.layer_results.append(self.func(np.dot(weight, self.layer_results[-1]) + bias))
-        self.layer_results.append(self.norm(np.dot(self.weights[-1], self.layer_results[-1]) + self.biases[-1]))
+        for layer in self.layers:
+            self.layer_results.append(layer.process(self.layer_results[-1]))
         return(self.layer_results[-1])
     
     def backpropagate(self, sample: DataSample) -> Gradient:
@@ -109,26 +94,25 @@ class Network:
         self.process(sample.input_value)
         gradient = Gradient()
         "chain is a vector that represents the influence on the cost function for each neuron's output in a layer"
-        chain = 2 * (self.layer_results[-1] - sample.output_value) * self.norm_derivative(self.layer_results[-1])
+        chain = 2 * (self.layer_results[-1] - sample.output_value) * self.layers[-1].derivative(self.layer_results[-1])
         weight_gradient = self.layer_results[-2] * np.atleast_2d(chain).T
         bias_gradient = chain
-        gradient.insert(0, weight_gradient, bias_gradient)
+        gradient.insert(0, Layer(weight_gradient, bias_gradient))
         
         for i in range(len(self.info)-2, 0, -1):
-            chain = self.func_derivative(self.layer_results[i]) * np.dot(self.weights[i].T, chain)
+            chain = self.layers[i].derivative(self.layer_results[i]) * np.dot(self.layers[i].weight.T, chain)
             weight_gradient = self.layer_results[i-1] * np.atleast_2d(chain).T
             bias_gradient = chain
-            gradient.insert(0, weight_gradient, bias_gradient)
+            gradient.insert(0, Layer(weight_gradient, bias_gradient))
         return(gradient)
     
     def modify(self, gradient: Gradient, learning_rate: float) -> None:
         for i, layer in enumerate(gradient):
-            self.weights[i] += -learning_rate * layer[0]
-            self.biases[i]  += -learning_rate * layer[1]
+            self.layers[i] += -learning_rate * layer
     
     def unaverage_cost(self, answer: np.ndarray) -> float:
         return(float(sum((self.layer_results[-1] - answer)**2)))
-
+    
     def cost(self, answer: np.ndarray) -> float:
         return(self.unaverage_cost(answer) / self.info[-1])
     
@@ -156,7 +140,7 @@ class Network:
                 if i == 0:
                     progress_bar = ProgressBar("Vanilla", cycles, runtime)
                 progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
-
+    
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
                         cycles: int = 1, 
@@ -186,13 +170,13 @@ class Network:
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic", cycles, runtime)
                 progress_bar(i+1, runtime, cost / (batchsize * self.info[-1]))
-
+    
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
                        cycles: int = 1, 
                        display_progress: bool = False) -> None:
         if display_progress == False:
-            momentum = Gradient([(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
             for _ in range(cycles):
                 gradient = self.backpropagate(dataset[0])
                 for data in dataset[1:]:
@@ -203,7 +187,7 @@ class Network:
         else:
             start_time = perf_counter()
             data_size = len(dataset)
-            momentum = Gradient([(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
             for i in range(cycles):
                 gradient = self.backpropagate(dataset[0])
                 cost = self.unaverage_cost(dataset[0].output_value)
@@ -217,13 +201,13 @@ class Network:
                 if i == 0:
                     progress_bar = ProgressBar("Momentum", cycles, runtime)
                 progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
-
+    
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
                                   cycles: int = 1, batchsize: int = 1, 
                                   display_progress: bool = False) -> None:
         if display_progress == False:
-            momentum = Gradient([(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
             data_size = len(dataset)
             for _ in range(cycles):
                 rand = np.random.randint(0, data_size)
@@ -237,7 +221,7 @@ class Network:
         else:
             start_time = perf_counter()
             data_size = len(dataset)
-            momentum = Gradient([(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
             for i in range(cycles):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand])
