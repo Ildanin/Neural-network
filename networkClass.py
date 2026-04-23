@@ -136,10 +136,9 @@ class Network:
                     gradient += self.backpropagate(data)
                     cost += self.unaverage_cost(data.output_value)
                 self.modify(gradient, learning_rate/data_size)
-                runtime = perf_counter() - start_time
                 if i == 0:
-                    progress_bar = ProgressBar("Vanilla", cycles, runtime)
-                progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
+                    progress_bar = ProgressBar("Vanilla", cycles, start_time)
+                progress_bar(i+1, cost / (data_size * self.info[-1]))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
@@ -166,10 +165,9 @@ class Network:
                     gradient += self.backpropagate(dataset[rand])
                     cost += self.unaverage_cost(dataset[rand].output_value)
                 self.modify(gradient, learning_rate / batchsize)
-                runtime = perf_counter() - start_time
                 if i == 0:
-                    progress_bar = ProgressBar("Stochastic", cycles, runtime)
-                progress_bar(i+1, runtime, cost / (batchsize * self.info[-1]))
+                    progress_bar = ProgressBar("Stochastic", cycles, start_time)
+                progress_bar(i+1, cost / (batchsize * self.info[-1]))
     
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
@@ -197,10 +195,9 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate/data_size)
-                runtime = perf_counter() - start_time
                 if i == 0:
-                    progress_bar = ProgressBar("Momentum", cycles, runtime)
-                progress_bar(i+1, runtime, cost / (data_size * self.info[-1]))
+                    progress_bar = ProgressBar("Momentum", cycles, start_time)
+                progress_bar(i+1, cost / (data_size * self.info[-1]))
     
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
@@ -233,10 +230,9 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate/batchsize)
-                runtime = perf_counter() - start_time
                 if i == 0:
-                    progress_bar = ProgressBar("Stochastic + Momentum", cycles, runtime)
-                progress_bar(i+1, runtime, cost / (batchsize * self.info[-1]))
+                    progress_bar = ProgressBar("Stochastic + Momentum", cycles, start_time)
+                progress_bar(i+1, cost / (batchsize * self.info[-1]))
 
 
 def load(filename: str) -> Network:
