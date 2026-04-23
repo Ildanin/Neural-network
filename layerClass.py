@@ -13,7 +13,7 @@ class Layer:
     
     def __iter__(self) -> Iterator:
         return iter((self.weight, self.bias))
-
+    
     def __add__(self, layer: Self) -> Self:
         self.weight += layer.weight
         self.bias += layer.bias

@@ -16,7 +16,7 @@ class Gradient:
     
     def __len__(self) -> int:
         return len(self.layers)
-
+    
     def __add__(self, gradient: Self) -> Self:
         for i, layer in enumerate(gradient):
             self[i] += layer
@@ -27,7 +27,7 @@ class Gradient:
             self[i] = coef * layer
         return self
     __rmul__ = __mul__
-
+    
     def insert(self, index: int, layer: Layer) -> None:
         self.layers.insert(index, layer)
     

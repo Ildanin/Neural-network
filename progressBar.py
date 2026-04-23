@@ -16,7 +16,7 @@ class ProgressBar:
               " Validation cost ", 
               '',
               sep='|')
-
+    
     def __call__(self, finished_cycles: int, sample_cost: float, val_cost: float = 1) -> None:
         runtime = perf_counter() - self.start_time
         self.percent += self.step
