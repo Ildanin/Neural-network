@@ -40,7 +40,7 @@ class Network:
             string += f'Layer {layer_ID} \n'
             string += f'{layer} \n'
             string += separator
-            return(string)
+            return string
         else:
             raise ValueError(f"Network has no layer with such ID({layer_ID})")
     
@@ -51,7 +51,7 @@ class Network:
     def copy(self) -> object:
         net = Network(self.info, self.activator, self.normalizer)
         net.layers = [layer.copy() for layer in self.layers]
-        return(net)
+        return net
     
     def save(self, filename: str) -> None:
         file = open(filename, 'w')
@@ -83,37 +83,34 @@ class Network:
         file.close()
     
     def process(self, data: np.ndarray) -> np.ndarray:
-        self.layer_results = [data]
+        result = data
         for layer in self.layers:
-            self.layer_results.append(layer.process(self.layer_results[-1]))
-        return(self.layer_results[-1])
+            result = layer.process(result)
+        self.last_result = result
+        return result
     
     def backpropagate(self, sample: DataSample) -> Gradient:
         "Returns the gradient for weights and biases"
         self.process(sample.input_value)
         gradient = Gradient()
         "chain is a vector that represents the influence on the cost function for each neuron's output in a layer"
-        chain = 2 * (self.layer_results[-1] - sample.output_value) * self.layers[-1].derivative(self.layer_results[-1])
-        weight_gradient = self.layer_results[-2] * np.atleast_2d(chain).T
-        bias_gradient = chain
-        gradient.insert(0, Layer(weight_gradient, bias_gradient))
+        chain = 2 * (self.last_result - sample.output_value) * self.layers[-1].derivative(self.last_result)
+        gradient.insert(0, self.layers[-1].backpropagate(chain))
         
         for i in range(len(self.info)-2, 0, -1):
-            chain = self.layers[i].derivative(self.layer_results[i]) * np.dot(self.layers[i].weight.T, chain)
-            weight_gradient = self.layer_results[i-1] * np.atleast_2d(chain).T
-            bias_gradient = chain
-            gradient.insert(0, Layer(weight_gradient, bias_gradient))
-        return(gradient)
+            chain = self.layers[i-1].derivative(self.layers[i].input) * np.dot(self.layers[i].weight.T, chain)
+            gradient.insert(0, self.layers[i-1].backpropagate(chain))
+        return gradient
     
     def modify(self, gradient: Gradient, learning_rate: float) -> None:
         for i, layer in enumerate(gradient):
             self.layers[i] += -learning_rate * layer
     
     def unaverage_cost(self, answer: np.ndarray) -> float:
-        return(float(sum((self.layer_results[-1] - answer)**2)))
+        return float(sum((self.last_result - answer)**2))
     
     def cost(self, answer: np.ndarray) -> float:
-        return(self.unaverage_cost(answer) / self.info[-1])
+        return self.unaverage_cost(answer) / self.info[-1]
     
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
@@ -237,4 +234,4 @@ class Network:
 def load(filename: str) -> Network:
     net = Network([0], 'linear')
     net.load(filename)
-    return(net)
+    return net
