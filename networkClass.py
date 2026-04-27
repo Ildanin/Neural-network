@@ -106,35 +106,42 @@ class Network:
         for i, layer in enumerate(gradient):
             self.layers[i] += -learning_rate * layer
     
-    def unaverage_cost(self, answer: np.ndarray) -> float:
+    def unaverage_cost(self, answer: np.ndarray) -> float: #add under
         return float(sum((self.last_result - answer)**2))
     
     def cost(self, answer: np.ndarray) -> float:
         return self.unaverage_cost(answer) / self.info[-1]
     
+    def _train(self, dataset: Dataset, learning_rate: float, get_cost: bool = False) -> float:
+        if not get_cost:
+            gradient = self.backpropagate(dataset[0])
+            for data in dataset[1:]:
+                gradient += self.backpropagate(data)
+            self.modify(gradient, learning_rate / len(dataset))
+            return -1
+        else:
+            gradient = self.backpropagate(dataset[0])
+            cost = self.unaverage_cost(dataset[0].output_value)
+            for data in dataset[1:]:
+                gradient += self.backpropagate(data)
+                cost += self.unaverage_cost(data.output_value)
+            self.modify(gradient, learning_rate / len(dataset))
+            return cost
+
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
                       cycles: int = 1, 
                       display_progress: bool = False) -> None:
         if display_progress == False:
             for _ in range(cycles):
-                gradient = self.backpropagate(dataset[0])
-                for data in dataset[1:]:
-                    gradient += self.backpropagate(data)
-                self.modify(gradient, learning_rate / len(dataset))
+                self._train(dataset, learning_rate)
         else:
             start_time = perf_counter()
-            data_size = len(dataset)
             for i in range(cycles):
-                gradient = self.backpropagate(dataset[0])
-                cost = self.unaverage_cost(dataset[0].output_value)
-                for data in dataset[1:]:
-                    gradient += self.backpropagate(data)
-                    cost += self.unaverage_cost(data.output_value)
-                self.modify(gradient, learning_rate/data_size)
+                cost = self._train(dataset, learning_rate, True)
                 if i == 0:
                     progress_bar = ProgressBar("Vanilla", cycles, start_time)
-                progress_bar(i+1, cost / (data_size * self.info[-1]))
+                progress_bar(i+1, cost / (len(dataset) * self.info[-1]))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
