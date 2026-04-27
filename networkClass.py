@@ -106,11 +106,11 @@ class Network:
         for i, layer in enumerate(gradient):
             self.layers[i] += -learning_rate * layer
     
-    def unaverage_cost(self, answer: np.ndarray) -> float: #add under
+    def _unaverage_cost(self, answer: np.ndarray) -> float: #add under
         return float(sum((self.last_result - answer)**2))
     
     def cost(self, answer: np.ndarray) -> float:
-        return self.unaverage_cost(answer) / self.info[-1]
+        return self._unaverage_cost(answer) / self.info[-1]
     
     def _train(self, dataset: Dataset, learning_rate: float, get_cost: bool = False) -> float:
         if not get_cost:
@@ -121,10 +121,10 @@ class Network:
             return -1
         else:
             gradient = self.backpropagate(dataset[0])
-            cost = self.unaverage_cost(dataset[0].output_value)
+            cost = self._unaverage_cost(dataset[0].output_value)
             for data in dataset[1:]:
                 gradient += self.backpropagate(data)
-                cost += self.unaverage_cost(data.output_value)
+                cost += self._unaverage_cost(data.output_value)
             self.modify(gradient, learning_rate / len(dataset))
             return cost
 
@@ -162,11 +162,11 @@ class Network:
             for i in range(cycles):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand])
-                cost = self.unaverage_cost(dataset[rand].output_value)
+                cost = self._unaverage_cost(dataset[rand].output_value)
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
                     gradient += self.backpropagate(dataset[rand])
-                    cost += self.unaverage_cost(dataset[rand].output_value)
+                    cost += self._unaverage_cost(dataset[rand].output_value)
                 self.modify(gradient, learning_rate / batchsize)
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic", cycles, start_time)
@@ -191,10 +191,10 @@ class Network:
             momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
             for i in range(cycles):
                 gradient = self.backpropagate(dataset[0])
-                cost = self.unaverage_cost(dataset[0].output_value)
+                cost = self._unaverage_cost(dataset[0].output_value)
                 for data in dataset[1:]:
                     gradient += self.backpropagate(data)
-                    cost += self.unaverage_cost(data.output_value)
+                    cost += self._unaverage_cost(data.output_value)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate/data_size)
@@ -225,11 +225,11 @@ class Network:
             for i in range(cycles):
                 rand = np.random.randint(0, data_size)
                 gradient = self.backpropagate(dataset[rand])
-                cost = self.unaverage_cost(dataset[rand].output_value)
+                cost = self._unaverage_cost(dataset[rand].output_value)
                 for _ in range(batchsize-1):
                     rand = np.random.randint(0, data_size)
                     gradient += self.backpropagate(dataset[rand])
-                    cost += self.unaverage_cost(dataset[rand].output_value)
+                    cost += self._unaverage_cost(dataset[rand].output_value)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate/batchsize)
