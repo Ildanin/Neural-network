@@ -119,7 +119,7 @@ class Network:
         if display_progress == False:
             for _ in range(cycles):
                 gradient = self.backpropagate(dataset[0])
-                for data in dataset:
+                for data in dataset[1:]:
                     gradient += self.backpropagate(data)
                 self.modify(gradient, learning_rate / len(dataset))
         else:
