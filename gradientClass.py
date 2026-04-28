@@ -1,21 +1,9 @@
-from typing import Iterator, Self
+from typing import Iterable, Self
 from .layerClass import Layer
 
-class Gradient:
-    def __init__(self, layers: list[Layer] = []) -> None:
-        self.layers = layers.copy()
-    
-    def __iter__(self) -> Iterator[Layer]:
-        return iter(self.layers)
-    
-    def __getitem__(self, index: int) -> Layer:
-        return self.layers[index]
-    
-    def __setitem__(self, index: int, value: Layer) -> None:
-        self.layers[index] = value
-    
-    def __len__(self) -> int:
-        return len(self.layers)
+class Gradient(list):
+    def __init__(self, layers: Iterable[Layer] = []) -> None:
+        super().__init__(layers)
     
     def __add__(self, gradient: Self) -> Self:
         for i, layer in enumerate(gradient):
@@ -26,10 +14,11 @@ class Gradient:
         for i, layer in enumerate(self):
             self[i] = coef * layer
         return self
-    __rmul__ = __mul__
     
-    def insert(self, index: int, layer: Layer) -> None:
-        self.layers.insert(index, layer)
+    def __rmul__(self, coef: float) -> list:
+        for i, layer in enumerate(self):
+            self[i] = coef * layer
+        return self
     
     def copy(self):
-        return Gradient(self.layers)
+        return Gradient(self)
