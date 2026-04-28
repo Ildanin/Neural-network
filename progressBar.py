@@ -12,19 +12,19 @@ class ProgressBar:
         print('', name.center(self.bar_length), 
               " Cycles ".center(self.cycles_width), 
               " Runtime ".center(self.runtime_width), 
-              " Sample loss ", 
-              " Validation loss ", 
+              " Train loss ", 
+              " Test loss ", 
               '',
               sep='|')
     
-    def __call__(self, finished_cycles: int, test_loss: float, val_loss: float = 1) -> None:
+    def __call__(self, finished_cycles: int, train_loss: float, test_loss: float = 1) -> None:
         runtime = perf_counter() - self.start_time
         self.percent += self.step
         cycles_line = f"{finished_cycles}/{self.all_cycles}".center(self.cycles_width)
         runtime_line = f"{round(runtime, 1)}/{round(runtime / self.percent, 1)}s".center(self.runtime_width)
-        test_loss_line = f"{round(test_loss, 3)}".center(13)
-        val_loss_line = f"{round(val_loss, 3)}".center(17)
-        print(f"\r{self.bar()}{cycles_line}|{runtime_line}|{test_loss_line}|{val_loss_line}|", flush=True, end='')
+        train_loss_line = f"{round(train_loss, 3)}".center(12)
+        test_loss_line = f"{round(test_loss, 3)}".center(11)
+        print(f"\r{self.bar()}{cycles_line}|{runtime_line}|{train_loss_line}|{test_loss_line}|", flush=True, end='')
         if finished_cycles == self.all_cycles:
             print()
     
