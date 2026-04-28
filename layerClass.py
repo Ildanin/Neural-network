@@ -29,7 +29,7 @@ class Layer:
         self.input = data.copy()
         return self.function(np.dot(self.weight, data) + self.bias)
     
-    def backpropagate(self, chain: ndarray):
+    def backprop(self, chain: ndarray):
         weight_gradient = self.input * np.atleast_2d(chain).T
         return Layer(weight_gradient, chain)
 

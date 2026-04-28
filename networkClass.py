@@ -91,30 +91,30 @@ class Network:
         self.last_result = result
         return result
     
-    def backpropagate(self, sample: DataSample) -> Gradient:
+    def backprop(self, sample: DataSample) -> Gradient:
         "Returns the gradient for weights and biases"
         self.process(sample.input_value)
         gradient = Gradient()
         "chain is a vector that represents the influence on the loss function for each neuron's output in a layer"
         chain = 2 * (self.last_result - sample.output_value) * self.layers[-1].derivative(self.last_result)
-        gradient.insert(0, self.layers[-1].backpropagate(chain))
+        gradient.insert(0, self.layers[-1].backprop(chain))
         
         for i in range(len(self.info)-2, 0, -1):
             chain = self.layers[i-1].derivative(self.layers[i].input) * np.dot(self.layers[i].weight.T, chain)
-            gradient.insert(0, self.layers[i-1].backpropagate(chain))
+            gradient.insert(0, self.layers[i-1].backprop(chain))
         return gradient
     
-    def backpropagate_dataset(self, dataset: Iterable[DataSample], get_loss: bool = False) -> tuple[Gradient, float]:
+    def backprop_dataset(self, dataset: Iterable[DataSample], get_loss: bool = False) -> tuple[Gradient, float]:
         if not get_loss:
             gradient = Gradient()
             for data in dataset:
-                gradient = self.backpropagate(data) + gradient
+                gradient = self.backprop(data) + gradient
             return gradient, -1
         else:            
             gradient = Gradient()
             loss = 0
             for data in dataset:
-                gradient = self.backpropagate(data) + gradient
+                gradient = self.backprop(data) + gradient
                 loss += self._unaverage_loss(data.output_value)
             return gradient, loss
     
@@ -134,12 +134,12 @@ class Network:
                       display_progress: bool = False) -> None:
         if display_progress == False:
             for _ in range(cycles):
-                gradient, loss = self.backpropagate_dataset(dataset)
+                gradient, loss = self.backprop_dataset(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
         else:
             start_time = perf_counter()
             for i in range(cycles):
-                gradient, loss = self.backpropagate_dataset(dataset, True)
+                gradient, loss = self.backprop_dataset(dataset, True)
                 self.modify(gradient, learning_rate / len(dataset))
                 if i == 0:
                     progress_bar = ProgressBar("Vanilla", cycles, start_time)
@@ -152,13 +152,13 @@ class Network:
         if display_progress == False:
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, loss = self.backpropagate_dataset(batch)
+                gradient, loss = self.backprop_dataset(batch)
                 self.modify(gradient, learning_rate / batchsize)
         else:
             start_time = perf_counter()
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, loss = self.backpropagate_dataset(batch, True)
+                gradient, loss = self.backprop_dataset(batch, True)
                 self.modify(gradient, learning_rate / batchsize)
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic", cycles, start_time)
@@ -171,7 +171,7 @@ class Network:
         if display_progress == False:
             momentum = Gradient()
             for _ in range(cycles):
-                gradient, loss = self.backpropagate_dataset(dataset)
+                gradient, loss = self.backprop_dataset(dataset)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
@@ -179,7 +179,7 @@ class Network:
             start_time = perf_counter()
             momentum = Gradient()
             for i in range(cycles):
-                gradient, loss = self.backpropagate_dataset(dataset, True)
+                gradient, loss = self.backprop_dataset(dataset, True)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
@@ -195,7 +195,7 @@ class Network:
             momentum = Gradient()
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, loss = self.backpropagate_dataset(batch)
+                gradient, loss = self.backprop_dataset(batch)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
@@ -204,7 +204,7 @@ class Network:
             momentum = Gradient()
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, loss = self.backpropagate_dataset(batch, True)
+                gradient, loss = self.backprop_dataset(batch, True)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
