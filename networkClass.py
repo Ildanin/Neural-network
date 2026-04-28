@@ -95,7 +95,7 @@ class Network:
         "Returns the gradient for weights and biases"
         self.process(sample.input_value)
         gradient = Gradient()
-        "chain is a vector that represents the influence on the cost function for each neuron's output in a layer"
+        "chain is a vector that represents the influence on the loss function for each neuron's output in a layer"
         chain = 2 * (self.last_result - sample.output_value) * self.layers[-1].derivative(self.last_result)
         gradient.insert(0, self.layers[-1].backpropagate(chain))
         
@@ -104,29 +104,29 @@ class Network:
             gradient.insert(0, self.layers[i-1].backpropagate(chain))
         return gradient
     
-    def backpropagate_dataset(self, dataset: Iterable[DataSample], get_cost: bool = False) -> tuple[Gradient, float]:
-        if not get_cost:
+    def backpropagate_dataset(self, dataset: Iterable[DataSample], get_loss: bool = False) -> tuple[Gradient, float]:
+        if not get_loss:
             gradient = Gradient()
             for data in dataset:
                 gradient = self.backpropagate(data) + gradient
             return gradient, -1
         else:            
             gradient = Gradient()
-            cost = 0
+            loss = 0
             for data in dataset:
                 gradient = self.backpropagate(data) + gradient
-                cost += self._unaverage_cost(data.output_value)
-            return gradient, cost
+                loss += self._unaverage_loss(data.output_value)
+            return gradient, loss
     
     def modify(self, gradient: Gradient, learning_rate: float) -> None:
         for i, layer in enumerate(gradient):
             self.layers[i] += -learning_rate * layer
     
-    def _unaverage_cost(self, answer: np.ndarray) -> float:
+    def _unaverage_loss(self, answer: np.ndarray) -> float:
         return float(sum((self.last_result - answer)**2))
     
-    def cost(self, answer: np.ndarray) -> float:
-        return self._unaverage_cost(answer) / self.info[-1]
+    def loss(self, answer: np.ndarray) -> float:
+        return self._unaverage_loss(answer) / self.info[-1]
 
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
@@ -134,16 +134,16 @@ class Network:
                       display_progress: bool = False) -> None:
         if display_progress == False:
             for _ in range(cycles):
-                gradient, cost = self.backpropagate_dataset(dataset)
+                gradient, loss = self.backpropagate_dataset(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
         else:
             start_time = perf_counter()
             for i in range(cycles):
-                gradient, cost = self.backpropagate_dataset(dataset, True)
+                gradient, loss = self.backpropagate_dataset(dataset, True)
                 self.modify(gradient, learning_rate / len(dataset))
                 if i == 0:
                     progress_bar = ProgressBar("Vanilla", cycles, start_time)
-                progress_bar(i+1, cost / (len(dataset) * self.info[-1]))
+                progress_bar(i+1, loss / (len(dataset) * self.info[-1]))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
@@ -152,17 +152,17 @@ class Network:
         if display_progress == False:
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, cost = self.backpropagate_dataset(batch)
+                gradient, loss = self.backpropagate_dataset(batch)
                 self.modify(gradient, learning_rate / batchsize)
         else:
             start_time = perf_counter()
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, cost = self.backpropagate_dataset(batch, True)
+                gradient, loss = self.backpropagate_dataset(batch, True)
                 self.modify(gradient, learning_rate / batchsize)
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic", cycles, start_time)
-                progress_bar(i+1, cost / (batchsize * self.info[-1]))
+                progress_bar(i+1, loss / (batchsize * self.info[-1]))
     
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
@@ -171,7 +171,7 @@ class Network:
         if display_progress == False:
             momentum = Gradient()
             for _ in range(cycles):
-                gradient, cost = self.backpropagate_dataset(dataset)
+                gradient, loss = self.backpropagate_dataset(dataset)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
@@ -179,13 +179,13 @@ class Network:
             start_time = perf_counter()
             momentum = Gradient()
             for i in range(cycles):
-                gradient, cost = self.backpropagate_dataset(dataset, True)
+                gradient, loss = self.backpropagate_dataset(dataset, True)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
                 if i == 0:
                     progress_bar = ProgressBar("Momentum", cycles, start_time)
-                progress_bar(i+1, cost / (len(dataset) * self.info[-1]))
+                progress_bar(i+1, loss / (len(dataset) * self.info[-1]))
     
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
@@ -195,7 +195,7 @@ class Network:
             momentum = Gradient()
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, cost = self.backpropagate_dataset(batch)
+                gradient, loss = self.backpropagate_dataset(batch)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
@@ -204,13 +204,13 @@ class Network:
             momentum = Gradient()
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, cost = self.backpropagate_dataset(batch, True)
+                gradient, loss = self.backpropagate_dataset(batch, True)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic + Momentum", cycles, start_time)
-                progress_bar(i+1, cost / (batchsize * self.info[-1]))
+                progress_bar(i+1, loss / (batchsize * self.info[-1]))
 
 
 def load(filename: str) -> Network:
