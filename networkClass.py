@@ -104,17 +104,17 @@ class Network:
             gradient.insert(0, self.layers[i-1].backpropagate(chain))
         return gradient
     
-    def backpropagate_dataset(self, dataset: Dataset | list[DataSample], get_cost: bool = False) -> tuple[Gradient, float]:
+    def backpropagate_dataset(self, dataset: Iterable[DataSample], get_cost: bool = False) -> tuple[Gradient, float]:
         if not get_cost:
-            gradient = self.backpropagate(dataset[0])
-            for data in dataset[1:]:
-                gradient += self.backpropagate(data)
+            gradient = Gradient()
+            for data in dataset:
+                gradient = self.backpropagate(data) + gradient
             return gradient, -1
-        else:
-            gradient = self.backpropagate(dataset[0])
-            cost = self._unaverage_cost(dataset[0].output_value)
-            for data in dataset[1:]:
-                gradient += self.backpropagate(data)
+        else:            
+            gradient = Gradient()
+            cost = 0
+            for data in dataset:
+                gradient = self.backpropagate(data) + gradient
                 cost += self._unaverage_cost(data.output_value)
             return gradient, cost
     
@@ -169,7 +169,7 @@ class Network:
                        cycles: int = 1, 
                        display_progress: bool = False) -> None:
         if display_progress == False:
-            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient()
             for _ in range(cycles):
                 gradient, cost = self.backpropagate_dataset(dataset)
                 gradient += momentum * momentum_conservation
@@ -177,7 +177,7 @@ class Network:
                 self.modify(gradient, learning_rate / len(dataset))
         else:
             start_time = perf_counter()
-            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient()
             for i in range(cycles):
                 gradient, cost = self.backpropagate_dataset(dataset, True)
                 gradient += momentum * momentum_conservation
@@ -192,7 +192,7 @@ class Network:
                                   cycles: int = 1, batchsize: int = 1, 
                                   display_progress: bool = False) -> None:
         if display_progress == False:
-            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient()
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
                 gradient, cost = self.backpropagate_dataset(batch)
@@ -201,7 +201,7 @@ class Network:
                 self.modify(gradient, learning_rate / batchsize)
         else:
             start_time = perf_counter()
-            momentum = Gradient([Layer(np.array([0]), np.array([0]))  for _ in range(len(self.info)-1)])
+            momentum = Gradient()
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
                 gradient, cost = self.backpropagate_dataset(batch, True)
