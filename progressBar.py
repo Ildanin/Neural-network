@@ -1,9 +1,10 @@
 from time import perf_counter
 
 class ProgressBar:
-    def __init__(self, name: str, total_cycles: int, bar_length: int = 40) -> None:
+    def __init__(self, name: str, total_cycles: int, istest: bool = False, bar_length: int = 40) -> None:
         self.name = name
         self.total_cycles = total_cycles
+        self.istest = istest
         self.bar_length = bar_length
         self.cycle = 0
         self.start_time = perf_counter()
@@ -18,8 +19,11 @@ class ProgressBar:
         cycles_line = f"{self.cycle}/{self.total_cycles}".center(self.cycles_width)
         runtime_line = f"{round(runtime, 1)}/{round(runtime / self.percent, 1)}s".center(self.runtime_width)
         train_loss_line = f"{round(train_loss, 3)}".center(12)
-        test_loss_line = f"{round(test_loss, 3)}".center(11)
-        print(f"\r{self.bar()}{cycles_line}|{runtime_line}|{train_loss_line}|{test_loss_line}|", flush=True, end='')
+        if self.istest:
+            test_loss_line = f"{round(test_loss, 3)}".center(11)
+            print(f"\r{self.bar()}{cycles_line}|{runtime_line}|{train_loss_line}|{test_loss_line}|", flush=True, end='')
+        else:
+            print(f"\r{self.bar()}{cycles_line}|{runtime_line}|{train_loss_line}|", flush=True, end='')
         if self.cycle == self.total_cycles:
             print()
     
@@ -32,9 +36,16 @@ class ProgressBar:
         self.runtime_width = max(2*len(str(round((runtime - self.start_time) * self.total_cycles, 1))) + 4, 9)
     
     def print_init(self) -> None:
-        print('', self.name.center(self.bar_length), 
-              " Cycles ".center(self.cycles_width), 
-              " Runtime ".center(self.runtime_width), 
-              " Train loss ", 
-              " Test loss ", 
-              '', sep='|')
+        if self.istest:
+            print('', self.name.center(self.bar_length), 
+                " Cycles ".center(self.cycles_width), 
+                " Runtime ".center(self.runtime_width), 
+                " Train loss ", 
+                " Test loss ", 
+                '', sep='|')
+        else:
+            print('', self.name.center(self.bar_length), 
+                " Cycles ".center(self.cycles_width), 
+                " Runtime ".center(self.runtime_width), 
+                " Train loss ", 
+                '', sep='|')
