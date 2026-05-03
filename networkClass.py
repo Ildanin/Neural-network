@@ -143,7 +143,7 @@ class Network:
                 self.modify(gradient, learning_rate / len(dataset))
                 if i == 0:
                     progress_bar = ProgressBar("Vanilla", cycles, start_time)
-                progress_bar(i+1, loss / (len(dataset) * self.info[-1]))
+                progress_bar(loss / (len(dataset) * self.info[-1]))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
@@ -162,7 +162,7 @@ class Network:
                 self.modify(gradient, learning_rate / batchsize)
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic", cycles, start_time)
-                progress_bar(i+1, loss / (batchsize * self.info[-1]))
+                progress_bar(loss / (batchsize * self.info[-1]))
     
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
@@ -185,7 +185,7 @@ class Network:
                 self.modify(gradient, learning_rate / len(dataset))
                 if i == 0:
                     progress_bar = ProgressBar("Momentum", cycles, start_time)
-                progress_bar(i+1, loss / (len(dataset) * self.info[-1]))
+                progress_bar(loss / (len(dataset) * self.info[-1]))
     
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
@@ -210,7 +210,7 @@ class Network:
                 self.modify(gradient, learning_rate / batchsize)
                 if i == 0:
                     progress_bar = ProgressBar("Stochastic + Momentum", cycles, start_time)
-                progress_bar(i+1, loss / (batchsize * self.info[-1]))
+                progress_bar(loss / (batchsize * self.info[-1]))
 
 
 def load(filename: str) -> Network:
