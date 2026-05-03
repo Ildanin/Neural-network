@@ -8,13 +8,7 @@ class ProgressBar:
         self.start_time = start_time
         self.cycles_width = max(2*len(str(total_cycles)) + 3, 8)
         self.runtime_width = max(2*len(str(round((perf_counter() - start_time) * total_cycles, 1))) + 4, 9)
-        print('', name.center(self.bar_length), 
-              " Cycles ".center(self.cycles_width), 
-              " Runtime ".center(self.runtime_width), 
-              " Train loss ", 
-              " Test loss ", 
-              '',
-              sep='|')
+        self.print_init(name)
     
     def __call__(self, train_loss: float, test_loss: float = 1) -> None:
         runtime = perf_counter() - self.start_time
@@ -31,3 +25,11 @@ class ProgressBar:
     def bar(self) -> str:
         filled = round(self.percent * self.bar_length)
         return f"|{'█'*(filled)}{' '*(self.bar_length - filled)}|"
+    
+    def print_init(self, name: str) -> None:
+        print('', name.center(self.bar_length), 
+              " Cycles ".center(self.cycles_width), 
+              " Runtime ".center(self.runtime_width), 
+              " Train loss ", 
+              " Test loss ", 
+              '', sep='|')
