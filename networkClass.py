@@ -1,5 +1,4 @@
 import numpy as np
-from time import perf_counter
 from random import sample
 from typing import Iterable, Iterator
 from .datasetClass import DataSample, Dataset
@@ -137,12 +136,10 @@ class Network:
                 gradient = self.backprop_dataset(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
         else:
-            start_time = perf_counter()
+            progress_bar = ProgressBar("Vanilla", cycles)
             for i in range(cycles):
                 gradient, loss = self.backprop_dataset_loss(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
-                if i == 0:
-                    progress_bar = ProgressBar("Vanilla", cycles, start_time)
                 progress_bar(loss / (len(dataset) * self.info[-1]))
     
     def train_stochastic(self, dataset: Dataset, 
@@ -155,13 +152,11 @@ class Network:
                 gradient = self.backprop_dataset(batch)
                 self.modify(gradient, learning_rate / batchsize)
         else:
-            start_time = perf_counter()
+            progress_bar = ProgressBar("Stochastic", cycles)
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
                 gradient, loss = self.backprop_dataset_loss(batch)
                 self.modify(gradient, learning_rate / batchsize)
-                if i == 0:
-                    progress_bar = ProgressBar("Stochastic", cycles, start_time)
                 progress_bar(loss / (batchsize * self.info[-1]))
     
     def train_momentum(self, dataset: Dataset,
@@ -176,15 +171,13 @@ class Network:
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
         else:
-            start_time = perf_counter()
+            progress_bar = ProgressBar("Momentum", cycles)
             momentum = Gradient()
             for i in range(cycles):
                 gradient, loss = self.backprop_dataset_loss(dataset)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
-                if i == 0:
-                    progress_bar = ProgressBar("Momentum", cycles, start_time)
                 progress_bar(loss / (len(dataset) * self.info[-1]))
     
     def train_stochastic_momentum(self, dataset: Dataset,
@@ -200,7 +193,7 @@ class Network:
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
         else:
-            start_time = perf_counter()
+            progress_bar = ProgressBar("Stochastic + Momentum", cycles)
             momentum = Gradient()
             for i in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
@@ -208,8 +201,6 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
-                if i == 0:
-                    progress_bar = ProgressBar("Stochastic + Momentum", cycles, start_time)
                 progress_bar(loss / (batchsize * self.info[-1]))
 
 
