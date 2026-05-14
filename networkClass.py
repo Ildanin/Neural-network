@@ -105,8 +105,15 @@ class Network:
         return float(sum((self.last_result - answer)**2))
     
     def loss(self, answer: np.ndarray) -> float:
-        return self._unaverage_loss(answer) / self.info[-1]
+        return self._unaverage_loss(answer) / self.info[-1][1]
 
+    def validate(self, dataset: Dataset) -> float:
+        loss = 0
+        for data in dataset:
+            self.process(data.input_value)
+            loss += self._unaverage_loss(data.output_value)
+        return loss / self.info[-1][1]
+    
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
                       cycles: int = 1, 
