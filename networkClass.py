@@ -1,44 +1,38 @@
 import numpy as np
 from random import sample
-from typing import Iterable, Iterator
+from typing import Iterable
 from .datasetClass import DataSample, Dataset
 from .progressBar import ProgressBar
 from .gradientClass import Gradient
-from .layerClass import Layer, random_layer
+from .layerClass import Layer, _layer_like, initialize_layers, load_info
 
 class Network:
-    def __init__(self, info: list[int], activator: str, normalizer: str | None = None, 
-                 weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
+    def __init__(self, info: list[_layer_like], weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
         if len(info) < 2:
             return None
         self.info = info
-        self.activator = activator
-        if normalizer == None:
-            self.normalizer = activator
-        else:
-            self.normalizer = normalizer
+        self.output_size = info[-1][1]
         self.weight_range = weight_range
         self.bias_range = bias_range
-        self.layers: list[Layer] = []
-        for i in range(1, len(self.info)-1):
-            self.layers.append(random_layer((self.info[i], self.info[i-1]), self.weight_range, self.bias_range, self.activator))
-        self.layers.append(random_layer((self.info[-1], self.info[-2]), self.weight_range, self.bias_range, self.normalizer))
+        self.layers = initialize_layers(info, weight_range, bias_range)
     
-
     def flush(self) -> None:
         for layer in self.layers:
             layer.flush(self.weight_range, self.bias_range)
     
     def copy(self) -> object:
-        net = Network(self.info, self.activator, self.normalizer)
+        net = Network([])
+        net.info = self.info.copy()
+        net.output_size = self.output_size
+        net.weight_range = self.weight_range
+        net.bias_range = self.bias_range
         net.layers = [layer.copy() for layer in self.layers]
         return net
     
     def save(self, filename: str) -> None:
         file = open(filename, 'w')
-        file.write(' '.join([str(layer_info) for layer_info in self.info]))
-        file.write('\n' + self.activator)
-        file.write('\n' + self.normalizer)
+        for layer in self.info:
+            file.write(f"{layer[0]} {layer[1]} {layer[2]}\n")
         for layer in self.layers:
             file.writelines(['\n' + str(coef) for coef in layer.weight.flatten()])
             file.writelines(['\n' + str(coef) for coef in layer.bias.flatten()])
@@ -46,21 +40,16 @@ class Network:
     
     def load(self, filename: str) -> None:
         file = open(filename, 'r')
-        self.info = [int(n) for n in file.readline().split()]
-        self.activator = file.readline()[:-1]
-        self.normalizer = file.readline()[:-1]
+        self.info = load_info(file)
         self.layers = []
         values = [float(x[:-1]) for x in file.readlines()]
         start = 0
         for i in range(1, len(self.info)):
-            weight = np.reshape(values[start : (start + self.info[i] * self.info[i-1])], (self.info[i], self.info[i-1]))
-            start += self.info[i] * self.info[i-1]
-            bias = np.array(values[start : (start + self.info[i])])
-            start += self.info[i]
-            if i != len(self.info)-1:
-                self.layers.append(Layer(weight, bias, self.activator))
-            else:
-                self.layers.append(Layer(weight, bias, self.normalizer))
+            weight = np.reshape(values[start : (start + self.info[i][1] * self.info[i-1][1])], (self.info[i][1], self.info[i-1][1]))
+            start += self.info[i][1] * self.info[i-1][1]
+            bias = np.array(values[start : (start + self.info[i][1])])
+            start += self.info[i][1]
+            self.layers.append(Layer(weight, bias, self.info[i][2]))
         file.close()
     
     def process(self, data: np.ndarray) -> np.ndarray:
@@ -105,14 +94,14 @@ class Network:
         return float(sum((self.last_result - answer)**2))
     
     def loss(self, answer: np.ndarray) -> float:
-        return self._unaverage_loss(answer) / self.info[-1][1]
+        return self._unaverage_loss(answer) / self.output_size
 
     def validate(self, dataset: Dataset) -> float:
         loss = 0
         for data in dataset:
             self.process(data.input_value)
             loss += self._unaverage_loss(data.output_value)
-        return loss / self.info[-1][1]
+        return loss / self.output_size
     
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
@@ -127,7 +116,7 @@ class Network:
             for i in range(cycles):
                 gradient, loss = self.backprop_dataset_loss(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
-                progress_bar(loss / (len(dataset) * self.info[-1]))
+                progress_bar(loss / (len(dataset) * self.output_size))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
@@ -144,7 +133,7 @@ class Network:
                 batch: list[DataSample] = sample(dataset, batchsize)
                 gradient, loss = self.backprop_dataset_loss(batch)
                 self.modify(gradient, learning_rate / batchsize)
-                progress_bar(loss / (batchsize * self.info[-1]))
+                progress_bar(loss / (batchsize * self.output_size))
     
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
@@ -165,7 +154,7 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
-                progress_bar(loss / (len(dataset) * self.info[-1]))
+                progress_bar(loss / (len(dataset) * self.output_size))
     
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
@@ -188,10 +177,10 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
-                progress_bar(loss / (batchsize * self.info[-1]))
+                progress_bar(loss / (batchsize * self.output_size))
 
 
 def load(filename: str) -> Network:
-    net = Network([0], 'linear')
+    net = Network([])
     net.load(filename)
     return net
