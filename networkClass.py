@@ -24,27 +24,7 @@ class Network:
             self.layers.append(random_layer((self.info[i], self.info[i-1]), self.weight_range, self.bias_range, self.activator))
         self.layers.append(random_layer((self.info[-1], self.info[-2]), self.weight_range, self.bias_range, self.normalizer))
     
-    def __str__(self, layer_ID: int | None = None, separator: str = '==========================') -> str:
-        "Layer ID 0 means the first layer after the input layer"
-        if layer_ID == None:
-            layers = [layer.glue() for layer in self.layers]
-            string = ''
-            for i in range(len(self.info)-1):
-                string += f'{separator} \n'
-                string += f'Layer {i} \n'
-                string += f'{layers[i]} \n'
-            string += separator
-            return(string)
-        elif 0 <= layer_ID <= len(self.info) - 2:
-            layer = self.layers[layer_ID].glue()
-            string =  f'separator \n'
-            string += f'Layer {layer_ID} \n'
-            string += f'{layer} \n'
-            string += separator
-            return string
-        else:
-            raise ValueError(f"Network has no layer with such ID({layer_ID})")
-    
+
     def flush(self) -> None:
         for layer in self.layers:
             layer.flush(self.weight_range, self.bias_range)
