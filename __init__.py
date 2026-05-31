@@ -3,3 +3,4 @@ from network.postProcess import add_noise, apply_threshold
 from network.activators import add_activator, Activators
 from network.utiles import random_array
 from network.datasetClass import Dataset
+from network.layerClass import FC, CN, PL

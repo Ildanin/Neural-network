@@ -4,25 +4,25 @@ from typing import Iterable
 from .datasetClass import DataSample, Dataset
 from .progressBar import ProgressBar
 from .gradientClass import Gradient
-from .layerClass import Layer, _layer_like, initialize_layers, load_info
+from .layerClass import FC, Layer, load_layers
 
 class Network:
-    def __init__(self, info: list[_layer_like], weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
-        if len(info) < 2:
+    def __init__(self, layers: list[Layer], weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
+        if len(layers) < 2:
             return None
-        self.info = info
-        self.output_size = info[-1][1]
+        self.layers = layers[1:]
+        self.output_size = layers[-1].size
         self.weight_range = weight_range
         self.bias_range = bias_range
-        self.layers = initialize_layers(info, weight_range, bias_range)
+        for i in range(len(layers)-1):
+            self.layers[i].set(layers[i].size, weight_range, bias_range)
     
     def flush(self) -> None:
         for layer in self.layers:
-            layer.flush(self.weight_range, self.bias_range)
+            layer.flush()
     
     def copy(self) -> object:
         net = Network([])
-        net.info = self.info.copy()
         net.output_size = self.output_size
         net.weight_range = self.weight_range
         net.bias_range = self.bias_range
@@ -31,8 +31,9 @@ class Network:
     
     def save(self, filename: str) -> None:
         file = open(filename, 'w')
-        for layer in self.info:
-            file.write(f"{layer[0]} {layer[1]} {layer[2]}\n")
+        file.write(f"FC {self.layers[0].get_input_size()} linear 0 0 0 0\n")
+        for layer in self.layers:
+            file.write(str(layer) + '\n')
         for layer in self.layers:
             file.writelines(['\n' + str(coef) for coef in layer.weight.flatten()])
             file.writelines(['\n' + str(coef) for coef in layer.bias.flatten()])
@@ -40,16 +41,17 @@ class Network:
     
     def load(self, filename: str) -> None:
         file = open(filename, 'r')
-        self.info = load_info(file)
-        self.layers = []
+        self.layers = load_layers(file)
+        self.output_size = self.layers[-1].size
         values = [float(x[:-1]) for x in file.readlines()]
         start = 0
-        for i in range(1, len(self.info)):
-            weight = np.reshape(values[start : (start + self.info[i][1] * self.info[i-1][1])], (self.info[i][1], self.info[i-1][1]))
-            start += self.info[i][1] * self.info[i-1][1]
-            bias = np.array(values[start : (start + self.info[i][1])])
-            start += self.info[i][1]
-            self.layers.append(Layer(weight, bias, self.info[i][2]))
+        for i, layer in enumerate(self.layers[1:]):
+            layer.weight = np.reshape(values[start : (start + layer.size * self.layers[i].size)], (layer.size, self.layers[i].size))
+            start += layer.size * self.layers[i].size
+            layer.bias = np.array(values[start : (start + layer.size)])
+            start += layer.size
+        self.layers.pop(0)
+        print(file.readline())
         file.close()
     
     def process(self, data: np.ndarray) -> np.ndarray:
@@ -67,7 +69,7 @@ class Network:
         chain = 2 * (self.last_result - sample.output_value) * self.layers[-1].derivative(self.last_result)
         gradient.insert(0, self.layers[-1].backprop(chain))
         
-        for i in range(len(self.info)-2, 0, -1):
+        for i in range(len(self.layers)-1, 0, -1):
             chain = self.layers[i-1].derivative(self.layers[i].input) * np.dot(self.layers[i].weight.T, chain)
             gradient.insert(0, self.layers[i-1].backprop(chain))
         return gradient

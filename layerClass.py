@@ -4,13 +4,21 @@ from typing import Iterator, Self, TextIO
 from .utiles import random_array
 from .activators import Activators
 
-class Layer:
-    def __init__(self, weight: ndarray, bias: ndarray, activator: str = "linear") -> None:
-        self.weight = weight.copy()
-        self.bias = bias.copy()
+class FC:
+    def __init__(self, size: int, activator: str = "linear") -> None:
+        self.size = size
         self.activator = activator
         self.function, self.derivative = Activators[activator]
     
+    def set(self, input_size: int, weight_range: tuple[float, float], bias_range: tuple[float, float]) -> None:
+        self.weight_range = weight_range
+        self.bias_range = bias_range
+        self.weight = random_array(*weight_range, (self.size, input_size))
+        self.bias = random_array(*bias_range, self.size)
+    
+    def __str__(self) -> str:
+        return f"FC {self.size} {self.activator} {self.weight_range[0]} {self.weight_range[1]} {self.bias_range[0]} {self.bias_range[1]}"
+
     def __iter__(self) -> Iterator:
         return iter((self.weight, self.bias))
     
@@ -31,40 +39,41 @@ class Layer:
     
     def backprop(self, chain: ndarray):
         weight_gradient = self.input * np.atleast_2d(chain).T
-        return Layer(weight_gradient, chain)
+        dummy = FC(self.size)
+        dummy.weight = weight_gradient
+        dummy.bias = chain
+        return dummy
 
     def copy(self):
-        return Layer(self.weight, self.bias, self.activator)
+        dummy = FC(self.size, self.activator)
+        dummy.weight = self.weight.copy()
+        dummy.bias = self.bias.copy()
+        return dummy
     
-    def glue(self) -> ndarray:
-        return np.append(self.weight, np.reshape(self.bias, (-1, 1)), 1)
+    def get_input_size(self) -> int:
+        return self.weight.shape[1]
     
-    def flush(self, weight_range: tuple[float, float], bias_range: tuple[float, float]) -> None:
-        self.weight = random_array(*weight_range, self.weight.size)
-        self.bias = random_array(*bias_range, self.bias.size)
+    def flush(self) -> None:
+        self.weight = random_array(*self.weight_range, self.weight.size)
+        self.bias = random_array(*self.bias_range, self.bias.size)
 
+class CN(FC):
+    pass
 
-def random_layer(size: tuple[int, int], weight_range: tuple[float, float], bias_range: tuple[float, float], activator: str) -> Layer:
-    weight = random_array(*weight_range, size)
-    bias = random_array(*bias_range, size[0])
-    return Layer(weight, bias, activator)
+class PL(FC):
+    pass
 
-_layer_like = tuple[str, int, str] #type size activator
-def initialize_layer(current_layer: _layer_like, next_layer: _layer_like, weight_range: tuple[float, float], bias_range: tuple[float, float]) -> Layer:
-    return random_layer((current_layer[1], next_layer[1]), weight_range, bias_range, current_layer[2])
+Layer = FC | CN | PL
 
-def initialize_layers(info: list[_layer_like], weight_range: tuple[float, float], bias_range: tuple[float, float]) -> list[Layer]:
+def load_layers(file: TextIO) -> list[Layer]:
     layers: list[Layer] = []
-    for i in range(1, len(info)-1):
-        layers.append(random_layer((info[i][1], info[i-1][1]), weight_range, bias_range, info[i][2]))
-    layers.append(random_layer((info[-1][1], info[-2][1]), weight_range, bias_range, info[-1][2]))
-    return layers
-
-def load_info(file: TextIO) -> list[_layer_like]:
-    info = []
     for line in file:
         if line == '\n':
             break
-        layer_type, size, activator = line.split()
-        info.append((layer_type, int(size), activator))
-    return info
+        layer_type, size, activator, weight_range1, weight_range2, bias_range1, bias_range2 = line.split()
+        if layer_type == 'FC':
+            layers.append(FC(int(size), activator))
+            layers[-1].weight_range = float(weight_range1), float(weight_range2)
+            layers[-1].bias_range = float(bias_range1), float(bias_range2)
+        else: raise ValueError("Work in progress")
+    return layers
