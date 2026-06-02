@@ -20,7 +20,7 @@ class FC:
     
     def __str__(self) -> str:
         return f"FC {self.size} {self.activator} {self.weights_range[0]} {self.weights_range[1]} {self.biases_range[0]} {self.biases_range[1]}"
-
+    
     def __iter__(self) -> Iterator:
         return iter((self.weights, self.biases))
     
@@ -45,12 +45,16 @@ class FC:
         dummy.weights = weights_gradient
         dummy.biases = chain
         return dummy
-
+    
     def copy(self):
         dummy = FC(self.size, self.activator)
         dummy.weights = self.weights.copy()
         dummy.biases = self.biases.copy()
         return dummy
+    
+    def save(self, file: TextIO) -> None:
+        file.writelines(['\n' + str(weight) for weight in self.weights.flatten()])
+        file.writelines(['\n' + str(bias) for bias in self.biases.flatten()])
     
     def get_input_size(self) -> int:
         return self.weights.shape[1]
@@ -65,7 +69,7 @@ class CN():
         self.kernel_size = kernel_size
         self.activator = activator
         self.function, self.derivative = Activators[activator]
-
+    
     def set(self, input_shape: tuple[int, ...], weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
         input_width, input_height, input_channels = input_shape
         self.weights_range = weights_range
@@ -89,7 +93,11 @@ class CN():
         dummy.kernels = self.kernels.copy()
         dummy.biases = self.biases.copy()
         return dummy
-
+    
+    def save(self, file: TextIO) -> None:
+        file.writelines(['\n' + str(weight) for weight in self.kernels.flatten()])
+        file.writelines(['\n' + str(bias) for bias in self.biases.flatten()])
+    
     def flush(self) -> None:
         self.kernels = random_array(*self.weights_range, self.kernels.shape)
         self.biases = random_array(*self.biases_range, self.output_shape)

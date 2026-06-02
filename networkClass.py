@@ -33,8 +33,7 @@ class Network:
         for layer in self.layers:
             file.write(str(layer) + '\n')
         for layer in self.layers:
-            file.writelines(['\n' + str(coef) for coef in layer.weights.flatten()])
-            file.writelines(['\n' + str(coef) for coef in layer.biases.flatten()])
+            layer.save(file)
         file.close()
     
     def load(self, filename: str) -> None:
