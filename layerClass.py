@@ -3,19 +3,22 @@ import numpy as np
 from scipy.signal import correlate2d
 from typing import Iterator, Self, TextIO
 from itertools import product
+from math import prod
 from .utiles import random_array
 from .activators import Activators
 
 class FC:
     def __init__(self, size: int, activator: str = "linear") -> None:
         self.size = size
+        self.output_shape = (self.size,)
         self.activator = activator
         self.function, self.derivative = Activators[activator]
     
-    def set(self, input_size: int, weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
+    def set(self, input_shape: tuple[int, ...], weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
+        self.input_shape = input_shape
         self.weights_range = weights_range
         self.biases_range = biases_range
-        self.weights = random_array(*weights_range, (self.size, input_size))
+        self.weights = random_array(*weights_range, (self.size, prod(input_shape)))
         self.biases = random_array(*biases_range, self.size)
     
     def __str__(self) -> str:
@@ -36,6 +39,8 @@ class FC:
     __rmul__ = __mul__
     
     def process(self, data: ndarray) -> ndarray:
+        if len(data.shape) != 1:
+            self.input = data.flatten()
         self.input = data.copy()
         return self.function(np.dot(self.weights, data) + self.biases)
     
@@ -72,17 +77,17 @@ class CN():
     
     def set(self, input_shape: tuple[int, ...], weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
         input_width, input_height, input_channels = input_shape
+        self.input_shape = input_shape
         self.weights_range = weights_range
         self.biases_range = biases_range
         self.output_shape = (self.size, input_height - self.kernel_size + 1, input_width - self.kernel_size + 1)
         self.kernels = random_array(*weights_range, (self.size, input_channels, self.kernel_size, self.kernel_size))
         self.biases = random_array(*biases_range, self.output_shape)
     
-    def process(self, input: ndarray) -> ndarray:
-        self.input = input
+    def process(self, data: ndarray) -> ndarray:
         self.output = self.biases.copy()
         for i, j in product(range(self.size), repeat=2):
-            self.output[i] += correlate2d(input[j], self.kernels[i, j], mode="valid")
+            self.output[i] += correlate2d(data[j], self.kernels[i, j], mode="valid")
         return self.output
     
     def backprop(self, chain: ndarray):
