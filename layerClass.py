@@ -1,6 +1,8 @@
 from numpy import ndarray
 import numpy as np
+from scipy.signal import correlate2d
 from typing import Iterator, Self, TextIO
+from itertools import product
 from .utiles import random_array
 from .activators import Activators
 
@@ -57,8 +59,30 @@ class FC:
         self.weight = random_array(*self.weight_range, self.weight.size)
         self.bias = random_array(*self.bias_range, self.bias.size)
 
-class CN(FC):
-    pass
+class CN():
+    def __init__(self, size: int, kernel_size: int, activator: str = "linear") -> None:
+        self.size = size
+        self.kernel_size = kernel_size
+        self.activator = activator
+        self.function, self.derivative = Activators[activator]
+
+    def set(self, input_shape: tuple[int, ...], weight_range: tuple[float, float], bias_range: tuple[float, float]) -> None:
+        input_channels, input_height, input_width  = input_shape
+        self.weight_range = weight_range
+        self.bias_range = bias_range
+        self.kernels = random_array(*weight_range, (self.size, input_channels, self.kernel_size, self.kernel_size))
+        self.biases = random_array(*bias_range, (self.size, input_height - self.kernel_size + 1, input_width - self.kernel_size + 1))
+    
+    def process(self, input: ndarray) -> ndarray:
+        self.input = input
+        self.output = np.copy(self.biases)
+        for i, j in product(range(self.size), repeat=2):
+            self.output[i] += correlate2d(input[j], self.kernels[i, j], mode="valid")
+        return self.output
+    
+    def backprop(self, chain: ndarray):
+        pass
+
 
 class PL(FC):
     pass
