@@ -7,48 +7,46 @@ from .gradientClass import Gradient
 from .layerClass import FC, Layer, load_layers
 
 class Network:
-    def __init__(self, layers: list[Layer], weight_range: tuple[float, float] = (-1, 1), bias_range: tuple[float, float] = (-1, 1)) -> None:
+    def __init__(self, input_shape: int | tuple[int, ...], layers: list[Layer], weights_range: tuple[float, float] = (-1, 1), biases_range: tuple[float, float] = (-1, 1)) -> None:
         if len(layers) < 2:
             return None
-        self.layers = layers[1:]
-        self.output_size = layers[-1].size
-        self.weight_range = weight_range
-        self.bias_range = bias_range
-        for i in range(len(layers)-1):
-            self.layers[i].set(layers[i].size, weight_range, bias_range)
+        self.input_shape = input_shape
+        self.layers = layers
+        self.output_shape = layers[-1].size
+        input_sizes = [input_shape] + [layer.output_shape for layer in self.layers]
+        for layer, input_size in zip(self.layers, input_sizes):
+            layer.set(input_size, weights_range, biases_range)
     
     def flush(self) -> None:
         for layer in self.layers:
             layer.flush()
     
     def copy(self) -> object:
-        net = Network([])
-        net.output_size = self.output_size
-        net.weight_range = self.weight_range
-        net.bias_range = self.bias_range
+        net = Network(self.input_shape, [])
+        net.output_shape = self.output_shape
         net.layers = [layer.copy() for layer in self.layers]
         return net
     
     def save(self, filename: str) -> None:
         file = open(filename, 'w')
-        file.write(f"FC {self.layers[0].get_input_size()} linear 0 0 0 0\n")
+        file.write(str(self.input_shape))
         for layer in self.layers:
             file.write(str(layer) + '\n')
         for layer in self.layers:
-            file.writelines(['\n' + str(coef) for coef in layer.weight.flatten()])
-            file.writelines(['\n' + str(coef) for coef in layer.bias.flatten()])
+            file.writelines(['\n' + str(coef) for coef in layer.weights.flatten()])
+            file.writelines(['\n' + str(coef) for coef in layer.biases.flatten()])
         file.close()
     
     def load(self, filename: str) -> None:
         file = open(filename, 'r')
         self.layers = load_layers(file)
-        self.output_size = self.layers[-1].size
+        self.output_shape = self.layers[-1].size
         values = [float(x[:-1]) for x in file.readlines()]
         start = 0
         for i, layer in enumerate(self.layers[1:]):
-            layer.weight = np.reshape(values[start : (start + layer.size * self.layers[i].size)], (layer.size, self.layers[i].size))
+            layer.weights = np.reshape(values[start : (start + layer.size * self.layers[i].size)], (layer.size, self.layers[i].size))
             start += layer.size * self.layers[i].size
-            layer.bias = np.array(values[start : (start + layer.size)])
+            layer.biases = np.array(values[start : (start + layer.size)])
             start += layer.size
         self.layers.pop(0)
         print(file.readline())
@@ -62,7 +60,7 @@ class Network:
         return result
     
     def backprop(self, sample: DataSample) -> Gradient:
-        "Returns the gradient for weights and biases"
+        "Returns the gradient for weightss and biaseses"
         self.process(sample.input_value)
         gradient = Gradient()
         "chain is a vector that represents the influence on the loss function for each neuron's output in a layer"
@@ -70,7 +68,7 @@ class Network:
         gradient.insert(0, self.layers[-1].backprop(chain))
         
         for i in range(len(self.layers)-1, 0, -1):
-            chain = self.layers[i-1].derivative(self.layers[i].input) * np.dot(self.layers[i].weight.T, chain)
+            chain = self.layers[i-1].derivative(self.layers[i].input) * np.dot(self.layers[i].weights.T, chain)
             gradient.insert(0, self.layers[i-1].backprop(chain))
         return gradient
     
@@ -96,14 +94,14 @@ class Network:
         return float(sum((self.last_result - answer)**2))
     
     def loss(self, answer: np.ndarray) -> float:
-        return self._unaverage_loss(answer) / self.output_size
+        return self._unaverage_loss(answer) / self.output_shape
 
     def validate(self, dataset: Dataset) -> float:
         loss = 0
         for data in dataset:
             self.process(data.input_value)
             loss += self._unaverage_loss(data.output_value)
-        return loss / self.output_size
+        return loss / self.output_shape
     
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
@@ -118,7 +116,7 @@ class Network:
             for i in range(cycles):
                 gradient, loss = self.backprop_dataset_loss(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
-                progress_bar(loss / (len(dataset) * self.output_size))
+                progress_bar(loss / (len(dataset) * self.output_shape))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
@@ -135,7 +133,7 @@ class Network:
                 batch: list[DataSample] = sample(dataset, batchsize)
                 gradient, loss = self.backprop_dataset_loss(batch)
                 self.modify(gradient, learning_rate / batchsize)
-                progress_bar(loss / (batchsize * self.output_size))
+                progress_bar(loss / (batchsize * self.output_shape))
     
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
@@ -156,7 +154,7 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
-                progress_bar(loss / (len(dataset) * self.output_size))
+                progress_bar(loss / (len(dataset) * self.output_shape))
     
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
@@ -179,7 +177,7 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
-                progress_bar(loss / (batchsize * self.output_size))
+                progress_bar(loss / (batchsize * self.output_shape))
 
 
 def load(filename: str) -> Network:

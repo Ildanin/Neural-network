@@ -12,52 +12,52 @@ class FC:
         self.activator = activator
         self.function, self.derivative = Activators[activator]
     
-    def set(self, input_size: int, weight_range: tuple[float, float], bias_range: tuple[float, float]) -> None:
-        self.weight_range = weight_range
-        self.bias_range = bias_range
-        self.weight = random_array(*weight_range, (self.size, input_size))
-        self.bias = random_array(*bias_range, self.size)
+    def set(self, input_size: int, weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
+        self.weights_range = weights_range
+        self.biases_range = biases_range
+        self.weights = random_array(*weights_range, (self.size, input_size))
+        self.biases = random_array(*biases_range, self.size)
     
     def __str__(self) -> str:
-        return f"FC {self.size} {self.activator} {self.weight_range[0]} {self.weight_range[1]} {self.bias_range[0]} {self.bias_range[1]}"
+        return f"FC {self.size} {self.activator} {self.weights_range[0]} {self.weights_range[1]} {self.biases_range[0]} {self.biases_range[1]}"
 
     def __iter__(self) -> Iterator:
-        return iter((self.weight, self.bias))
+        return iter((self.weights, self.biases))
     
     def __add__(self, layer: Self) -> Self:
-        self.weight += layer.weight
-        self.bias += layer.bias
+        self.weights += layer.weights
+        self.biases += layer.biases
         return self
     
     def __mul__(self, coef: float) -> Self:
-        self.weight = self.weight * coef
-        self.bias = self.bias * coef
+        self.weights = self.weights * coef
+        self.biases = self.biases * coef
         return self
     __rmul__ = __mul__
     
     def process(self, data: ndarray) -> ndarray:
         self.input = data.copy()
-        return self.function(np.dot(self.weight, data) + self.bias)
+        return self.function(np.dot(self.weights, data) + self.biases)
     
     def backprop(self, chain: ndarray):
-        weight_gradient = self.input * np.atleast_2d(chain).T
+        weights_gradient = self.input * np.atleast_2d(chain).T
         dummy = FC(self.size)
-        dummy.weight = weight_gradient
-        dummy.bias = chain
+        dummy.weights = weights_gradient
+        dummy.biases = chain
         return dummy
 
     def copy(self):
         dummy = FC(self.size, self.activator)
-        dummy.weight = self.weight.copy()
-        dummy.bias = self.bias.copy()
+        dummy.weights = self.weights.copy()
+        dummy.biases = self.biases.copy()
         return dummy
     
     def get_input_size(self) -> int:
-        return self.weight.shape[1]
+        return self.weights.shape[1]
     
     def flush(self) -> None:
-        self.weight = random_array(*self.weight_range, self.weight.size)
-        self.bias = random_array(*self.bias_range, self.bias.size)
+        self.weights = random_array(*self.weights_range, self.weights.size)
+        self.biases = random_array(*self.biases_range, self.biases.size)
 
 class CN():
     def __init__(self, size: int, kernel_size: int, activator: str = "linear") -> None:
@@ -66,13 +66,13 @@ class CN():
         self.activator = activator
         self.function, self.derivative = Activators[activator]
 
-    def set(self, input_shape: tuple[int, ...], weight_range: tuple[float, float], bias_range: tuple[float, float]) -> None:
+    def set(self, input_shape: tuple[int, ...], weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
         input_width, input_height, input_channels = input_shape
-        self.weight_range = weight_range
-        self.bias_range = bias_range
+        self.weights_range = weights_range
+        self.biases_range = biases_range
         self.output_shape = (self.size, input_height - self.kernel_size + 1, input_width - self.kernel_size + 1)
-        self.kernels = random_array(*weight_range, (self.size, input_channels, self.kernel_size, self.kernel_size))
-        self.biases = random_array(*bias_range, self.output_shape)
+        self.kernels = random_array(*weights_range, (self.size, input_channels, self.kernel_size, self.kernel_size))
+        self.biases = random_array(*biases_range, self.output_shape)
     
     def process(self, input: ndarray) -> ndarray:
         self.input = input
@@ -91,8 +91,8 @@ class CN():
         return dummy
 
     def flush(self) -> None:
-        self.kernels = random_array(*self.weight_range, self.kernels.shape)
-        self.biases = random_array(*self.bias_range, self.output_shape)
+        self.kernels = random_array(*self.weights_range, self.kernels.shape)
+        self.biases = random_array(*self.biases_range, self.output_shape)
 
 
 class PL(FC):
@@ -105,10 +105,10 @@ def load_layers(file: TextIO) -> list[Layer]:
     for line in file:
         if line == '\n':
             break
-        layer_type, size, activator, weight_range1, weight_range2, bias_range1, bias_range2 = line.split()
+        layer_type, size, activator, weights_range1, weights_range2, biases_range1, biases_range2 = line.split()
         if layer_type == 'FC':
             layers.append(FC(int(size), activator))
-            layers[-1].weight_range = float(weight_range1), float(weight_range2)
-            layers[-1].bias_range = float(bias_range1), float(bias_range2)
+            layers[-1].weights_range = float(weights_range1), float(weights_range2)
+            layers[-1].biases_range = float(biases_range1), float(biases_range2)
         else: raise ValueError("Work in progress")
     return layers
