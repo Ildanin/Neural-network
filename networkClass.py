@@ -18,10 +18,6 @@ class Network:
         for i, layer in enumerate(layers[1:]):
             layer.set(layers[i].output_shape, weights_range, biases_range)
     
-    def flush(self) -> None:
-        for layer in self.layers:
-            layer.flush()
-    
     def copy(self) -> object:
         net = Network(self.input_shape, [])
         net.layers = [layer.copy() for layer in self.layers]
@@ -29,26 +25,12 @@ class Network:
     
     def save(self, filename: str) -> None:
         file = open(filename, 'w')
-        file.write(str(self.input_shape))
+        file.write(' '.join(str(d) for d in self.input_shape) + '\n')
         for layer in self.layers:
             file.write(str(layer) + '\n')
         for layer in self.layers:
             layer.save(file)
         file.close()
-    
-    '''def load(self, filename: str) -> None:
-        file = open(filename, 'r')
-        self.layers = load_layers(file)
-        values = [float(x[:-1]) for x in file.readlines()]
-        start = 0
-        for i, layer in enumerate(self.layers[1:]):
-            layer.weights = np.reshape(values[start : (start + layer.size * self.layers[i].size)], (layer.size, self.layers[i].size))
-            start += layer.size * self.layers[i].size
-            layer.biases = np.array(values[start : (start + layer.size)])
-            start += layer.size
-        self.layers.pop(0)
-        print(file.readline())
-        file.close()'''
     
     def process(self, data: np.ndarray) -> np.ndarray:
         result = data
@@ -179,6 +161,11 @@ class Network:
 
 
 def load(filename: str) -> Network:
-    net = Network((0,), [])
-    net.load(filename)
+    file = open(filename, 'r')
+    input_shape = tuple(int(d) for d in file.readline().split())
+    layers = load_layers(file)
+    net = Network(input_shape, layers)
+    for layer in net.layers:
+        layer.load(file)
+    file.close()
     return net

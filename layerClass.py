@@ -16,13 +16,11 @@ class FC:
     
     def set(self, input_shape: tuple[int, ...], weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
         self.input_shape = input_shape
-        self.weights_range = weights_range
-        self.biases_range = biases_range
         self.weights = random_array(*weights_range, (self.size, prod(input_shape)))
         self.biases = random_array(*biases_range, self.size)
     
     def __str__(self) -> str:
-        return f"FC {self.size} {self.activator} {self.weights_range[0]} {self.weights_range[1]} {self.biases_range[0]} {self.biases_range[1]}"
+        return f"FC {self.size} {self.activator}"
     
     def __iter__(self) -> Iterator:
         return iter((self.weights, self.biases))
@@ -61,12 +59,9 @@ class FC:
         file.writelines(['\n' + str(weight) for weight in self.weights.flatten()])
         file.writelines(['\n' + str(bias) for bias in self.biases.flatten()])
     
-    def get_input_size(self) -> int:
-        return self.weights.shape[1]
-    
-    def flush(self) -> None:
-        self.weights = random_array(*self.weights_range, self.weights.size)
-        self.biases = random_array(*self.biases_range, self.biases.size)
+    def load(self, file: TextIO) -> None:
+        self.weights = np.reshape([float(file.readline()[:-1]) for _ in range(self.weights.size)], self.weights.shape)
+        self.biases = np.array([float(file.readline()[:-1]) for _ in range(self.biases.size)])
 
 class CN():
     def __init__(self, size: int, kernel_size: int, activator: str = "linear") -> None:
@@ -76,18 +71,20 @@ class CN():
         self.function, self.derivative = Activators[activator]
     
     def set(self, input_shape: tuple[int, ...], weights_range: tuple[float, float], biases_range: tuple[float, float]) -> None:
-        input_width, input_height, input_channels = input_shape
+        input_depth, input_height, input_width = input_shape
+        self.depth = input_depth
         self.input_shape = input_shape
-        self.weights_range = weights_range
-        self.biases_range = biases_range
         self.output_shape = (self.size, input_height - self.kernel_size + 1, input_width - self.kernel_size + 1)
-        self.kernels = random_array(*weights_range, (self.size, input_channels, self.kernel_size, self.kernel_size))
+        self.kernels = random_array(*weights_range, (self.size, input_depth, self.kernel_size, self.kernel_size))
         self.biases = random_array(*biases_range, self.output_shape)
+    
+    def __str__(self) -> str:
+        return f"CN {self.size} {self.kernel_size} {self.activator}"
     
     def process(self, data: ndarray) -> ndarray:
         self.input = data.copy()
         self.output = self.biases.copy()
-        for i, j in product(range(self.size), repeat=2):
+        for i, j in product(range(self.size), range(self.depth)):
             self.output[i] += correlate2d(data[j], self.kernels[i, j], mode="valid")
         return self.output
     
@@ -104,9 +101,9 @@ class CN():
         file.writelines(['\n' + str(weight) for weight in self.kernels.flatten()])
         file.writelines(['\n' + str(bias) for bias in self.biases.flatten()])
     
-    def flush(self) -> None:
-        self.kernels = random_array(*self.weights_range, self.kernels.shape)
-        self.biases = random_array(*self.biases_range, self.output_shape)
+    def load(self, file: TextIO) -> None:
+        self.kernels = np.reshape([float(file.readline()[:-1]) for _ in range(self.kernels.size)], self.kernels.shape)
+        self.biases = np.reshape([float(file.readline()[:-1]) for _ in range(self.biases.size)], self.biases.shape)
 
 
 class PL(FC):
@@ -119,10 +116,12 @@ def load_layers(file: TextIO) -> list[Layer]:
     for line in file:
         if line == '\n':
             break
-        layer_type, size, activator, weights_range1, weights_range2, biases_range1, biases_range2 = line.split()
+        layer_type, info = line.split(maxsplit=1)
         if layer_type == 'FC':
+            size, activator = info.split()
             layers.append(FC(int(size), activator))
-            layers[-1].weights_range = float(weights_range1), float(weights_range2)
-            layers[-1].biases_range = float(biases_range1), float(biases_range2)
-        else: raise ValueError("Work in progress")
+        elif layer_type == 'CN':
+            size, kernel_size, activator = info.split()
+            layers.append(CN(int(size), int(kernel_size), activator))
+        else: raise ValueError("Invalid layer type")
     return layers
