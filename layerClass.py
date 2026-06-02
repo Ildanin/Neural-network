@@ -67,21 +67,32 @@ class CN():
         self.function, self.derivative = Activators[activator]
 
     def set(self, input_shape: tuple[int, ...], weight_range: tuple[float, float], bias_range: tuple[float, float]) -> None:
-        input_channels, input_height, input_width  = input_shape
+        input_width, input_height, input_channels = input_shape
         self.weight_range = weight_range
         self.bias_range = bias_range
+        self.output_shape = (self.size, input_height - self.kernel_size + 1, input_width - self.kernel_size + 1)
         self.kernels = random_array(*weight_range, (self.size, input_channels, self.kernel_size, self.kernel_size))
-        self.biases = random_array(*bias_range, (self.size, input_height - self.kernel_size + 1, input_width - self.kernel_size + 1))
+        self.biases = random_array(*bias_range, self.output_shape)
     
     def process(self, input: ndarray) -> ndarray:
         self.input = input
-        self.output = np.copy(self.biases)
+        self.output = self.biases.copy()
         for i, j in product(range(self.size), repeat=2):
             self.output[i] += correlate2d(input[j], self.kernels[i, j], mode="valid")
         return self.output
     
     def backprop(self, chain: ndarray):
         pass
+    
+    def copy(self):
+        dummy = CN(self.size, self.kernel_size, self.activator)
+        dummy.kernels = self.kernels.copy()
+        dummy.biases = self.biases.copy()
+        return dummy
+
+    def flush(self) -> None:
+        self.kernels = random_array(*self.weight_range, self.kernels.shape)
+        self.biases = random_array(*self.bias_range, self.output_shape)
 
 
 class PL(FC):
