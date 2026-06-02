@@ -36,7 +36,7 @@ class Network:
             layer.save(file)
         file.close()
     
-    def load(self, filename: str) -> None:
+    '''def load(self, filename: str) -> None:
         file = open(filename, 'r')
         self.layers = load_layers(file)
         self.output_shape = self.layers[-1].size
@@ -49,7 +49,7 @@ class Network:
             start += layer.size
         self.layers.pop(0)
         print(file.readline())
-        file.close()
+        file.close()'''
     
     def process(self, data: np.ndarray) -> np.ndarray:
         result = data
