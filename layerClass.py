@@ -40,8 +40,8 @@ class FC:
     
     def process(self, data: ndarray) -> ndarray:
         if len(data.shape) != 1:
-            self.input = data.flatten()
-        self.input = data.copy()
+            data = data.flatten()
+        self.input = data.copy()            
         return self.function(np.dot(self.weights, data) + self.biases)
     
     def backprop(self, chain: ndarray):
@@ -85,6 +85,7 @@ class CN():
         self.biases = random_array(*biases_range, self.output_shape)
     
     def process(self, data: ndarray) -> ndarray:
+        self.input = data.copy()
         self.output = self.biases.copy()
         for i, j in product(range(self.size), repeat=2):
             self.output[i] += correlate2d(data[j], self.kernels[i, j], mode="valid")
