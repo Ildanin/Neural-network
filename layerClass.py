@@ -86,7 +86,7 @@ class CN():
         self.output = self.biases.copy()
         for i, j in product(range(self.size), range(self.depth)):
             self.output[i] += correlate2d(data[j], self.kernels[i, j], mode="valid")
-        return self.output
+        return self.function(self.output)
     
     def backprop(self, chain: ndarray):
         pass
