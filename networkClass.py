@@ -40,7 +40,7 @@ class Network:
         return result
     
     def backprop(self, sample: DataSample) -> Gradient:
-        "Returns the gradient for weightss and biaseses"
+        "Returns gradient for weightss and biaseses"
         self.process(sample.input_value)
         gradient = Gradient()
         "chain is a vector that represents the influence on the loss function for each neuron's output in a layer"
@@ -67,8 +67,9 @@ class Network:
         return gradient, loss
     
     def modify(self, gradient: Gradient, learning_rate: float) -> None:
-        for i, layer in enumerate(gradient):
-            self.layers[i] += -learning_rate * layer
+        gradient *= -learning_rate
+        for layer, layer_gradient in zip(self.layers, gradient):
+            layer += layer_gradient
     
     def _unaverage_loss(self, answer: np.ndarray) -> float:
         return float(sum((self.last_result - answer)**2))

@@ -1,11 +1,12 @@
-from numpy import ndarray
 import numpy as np
+from numpy import ndarray
 from scipy.signal import correlate2d
 from typing import Iterator, Self, TextIO
 from itertools import product
 from math import prod
-from .utiles import random_array
 from .activators import Activators
+from .gradientClass import _layer_gradient
+from .utiles import random_array
 
 class FC:
     def __init__(self, size: int, activator: str = "linear") -> None:
@@ -22,19 +23,10 @@ class FC:
     def __str__(self) -> str:
         return f"FC {self.size} {self.activator}"
     
-    def __iter__(self) -> Iterator:
-        return iter((self.weights, self.biases))
-    
-    def __add__(self, layer: Self) -> Self:
-        self.weights += layer.weights
-        self.biases += layer.biases
+    def __iadd__(self, gradient: _layer_gradient) -> Self:
+        self.weights += gradient[0]
+        self.biases += gradient[1]
         return self
-    
-    def __mul__(self, coef: float) -> Self:
-        self.weights = self.weights * coef
-        self.biases = self.biases * coef
-        return self
-    __rmul__ = __mul__
     
     def process(self, data: ndarray) -> ndarray:
         if len(data.shape) != 1:
@@ -42,12 +34,9 @@ class FC:
         self.input = data.copy()            
         return self.function(np.dot(self.weights, data) + self.biases)
     
-    def backprop(self, chain: ndarray):
+    def backprop(self, chain: ndarray) -> _layer_gradient:
         weights_gradient = self.input * np.atleast_2d(chain).T
-        dummy = FC(self.size)
-        dummy.weights = weights_gradient
-        dummy.biases = chain
-        return dummy
+        return [weights_gradient, chain]
     
     def copy(self):
         dummy = FC(self.size, self.activator)
@@ -81,6 +70,11 @@ class CN():
     def __str__(self) -> str:
         return f"CN {self.size} {self.kernel_size} {self.activator}"
     
+    def __iadd__(self, gradient: _layer_gradient) -> Self:
+        self.kernels += gradient[0]
+        self.biases += gradient[1]
+        return self
+    
     def process(self, data: ndarray) -> ndarray:
         self.input = data.copy()
         self.output = self.biases.copy()
@@ -88,7 +82,7 @@ class CN():
             self.output[i] += correlate2d(data[j], self.kernels[i, j], mode="valid")
         return self.function(self.output)
     
-    def backprop(self, chain: ndarray):
+    def backprop(self, chain: ndarray) -> _layer_gradient:
         pass
     
     def copy(self):
