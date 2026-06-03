@@ -31,12 +31,17 @@ class FC:
     def process(self, data: ndarray) -> ndarray:
         if len(data.shape) != 1:
             data = data.flatten()
-        self.input = data.copy()            
-        return self.function(np.dot(self.weights, data) + self.biases)
+        self.input = data.copy()
+        self.output = self.function(np.dot(self.weights, data) + self.biases)
+        return self.output.copy()
     
-    def backprop(self, chain: ndarray) -> _layer_gradient:
-        weights_gradient = self.input * np.atleast_2d(chain).T
-        return [weights_gradient, chain]
+    def backprop(self, chain: ndarray) -> tuple[_layer_gradient, ndarray]:
+        new_chain = chain * self.derivative(self.output)
+        weights_gradient = self.input * np.atleast_2d(new_chain).T
+        return [weights_gradient, new_chain], new_chain
+    
+    def update_chain(self, chain: ndarray) -> ndarray:
+        return np.dot(self.weights.T, chain)
     
     def copy(self):
         dummy = FC(self.size, self.activator)
@@ -83,6 +88,9 @@ class CN():
         return self.function(self.output)
     
     def backprop(self, chain: ndarray) -> _layer_gradient:
+        pass
+
+    def update_chain(self, chain: ndarray) -> ndarray:
         pass
     
     def copy(self):

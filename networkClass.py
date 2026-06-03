@@ -43,13 +43,15 @@ class Network:
         "Returns gradient for weightss and biaseses"
         self.process(sample.input_value)
         gradient = Gradient()
-        "chain is a vector that represents the influence on the loss function for each neuron's output in a layer"
-        chain = 2 * (self.last_result - sample.output_value) * self.layers[-1].derivative(self.last_result)
-        gradient.insert(0, self.layers[-1].backprop(chain))
+        "chain is a vector that represents the influence on the loss function for each neuron's output in a layer"        
+        chain = 2 * (self.last_result - sample.output_value)
+        for layer in reversed(self.layers[1:]):
+            layer_gradient, chain = layer.backprop(chain)
+            chain = layer.update_chain(chain)
+            gradient.insert(0, layer_gradient)
         
-        for i in range(len(self.layers)-1, 0, -1):
-            chain = self.layers[i-1].derivative(self.layers[i].input) * np.dot(self.layers[i].weights.T, chain)
-            gradient.insert(0, self.layers[i-1].backprop(chain))
+        layer_gradient, chain = self.layers[0].backprop(chain)
+        gradient.insert(0, layer_gradient)
         return gradient
     
     def backprop_dataset(self, dataset: Iterable[DataSample]) -> Gradient:
