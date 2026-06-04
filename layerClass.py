@@ -1,6 +1,6 @@
 import numpy as np
 from numpy import ndarray
-from scipy.signal import correlate2d
+from scipy.signal import correlate2d, convolve2d
 from typing import Iterator, Self, TextIO
 from itertools import product
 from math import prod
@@ -85,13 +85,23 @@ class CN():
         self.output = self.biases.copy()
         for i, j in product(range(self.size), range(self.depth)):
             self.output[i] += correlate2d(data[j], self.kernels[i, j], mode="valid")
-        return self.function(self.output)
+        self.output = self.function(self.output)
+        return self.output.copy()
     
-    def backprop(self, chain: ndarray) -> _layer_gradient:
-        pass
+    def backprop(self, chain: ndarray) -> tuple[_layer_gradient, ndarray]:
+        if chain.shape != self.output_shape:
+            chain = np.reshape(chain, self.output_shape)
+        new_chain = chain * self.derivative(self.output)
+        kernels_gradient = np.zeros(self.kernels.shape)
+        for i, j in product(range(self.size), range(self.depth)):
+            kernels_gradient[i, j] += correlate2d(self.input[j], new_chain[i], mode="valid")
+        return [kernels_gradient, new_chain.copy()], new_chain
 
     def update_chain(self, chain: ndarray) -> ndarray:
-        pass
+        new_chain = np.zeros(self.input_shape)
+        for i, j in product(range(self.size), range(self.depth)):
+            new_chain[j] += convolve2d(chain[i], self.kernels[i, j], "full")
+        return new_chain
     
     def copy(self):
         dummy = CN(self.size, self.kernel_size, self.activator)
