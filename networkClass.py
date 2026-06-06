@@ -60,6 +60,11 @@ class Network:
             gradient = self.backprop(data) + gradient
         return gradient
     
+    def backprop_loss(self, sample: DataSample) -> tuple[Gradient, float]:
+        gradient = self.backprop(sample)
+        loss = self._unaverage_loss(sample.output_value)
+        return gradient, loss
+
     def backprop_dataset_loss(self, dataset: Iterable[DataSample]) -> tuple[Gradient, float]:
         gradient = Gradient()
         loss = 0
@@ -84,66 +89,113 @@ class Network:
         for data in dataset:
             self.process(data.input_value)
             loss += self._unaverage_loss(data.output_value)
-        return loss / self.output_size
+        return loss / (len(dataset) * self.output_size)
     
     def train_vanilla(self, dataset: Dataset, 
                       learning_rate: float, 
                       cycles: int = 1, 
-                      display_progress: bool = False) -> None:
-        if display_progress == False:
+                      display_progress: bool = False, 
+                      validation_dataset: Dataset = Dataset()) -> None:
+        if validation_dataset:
+            progress_bar = ProgressBar("Vanilla", cycles, True)
             for _ in range(cycles):
-                gradient = self.backprop_dataset(dataset)
+                gradient, loss = self.backprop_dataset_loss(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
-        else:
+                progress_bar(loss / (len(dataset) * self.output_size), self.validate(validation_dataset))
+        elif display_progress:
             progress_bar = ProgressBar("Vanilla", cycles)
-            for i in range(cycles):
+            for _ in range(cycles):
                 gradient, loss = self.backprop_dataset_loss(dataset)
                 self.modify(gradient, learning_rate / len(dataset))
                 progress_bar(loss / (len(dataset) * self.output_size))
+        else:
+            for _ in range(cycles):
+                gradient = self.backprop_dataset(dataset)
+                self.modify(gradient, learning_rate / len(dataset))
     
     def train_stochastic(self, dataset: Dataset, 
                         learning_rate: float, 
                         cycles: int = 1, 
-                        batchsize: int = 1, display_progress: bool = False) -> None:
-        if display_progress == False:
+                        batchsize: int = 1, 
+                        display_progress: bool = False,
+                        validation_dataset: Dataset = Dataset()) -> None:
+        if validation_dataset:
+            progress_bar = ProgressBar("Stochastic", cycles, True)
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
-                gradient = self.backprop_dataset(batch)
+                gradient, loss = self.backprop_dataset_loss(batch)
                 self.modify(gradient, learning_rate / batchsize)
-        else:
+                progress_bar(loss / (batchsize * self.output_size), self.validate(validation_dataset))
+        if display_progress:
             progress_bar = ProgressBar("Stochastic", cycles)
-            for i in range(cycles):
+            for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
                 gradient, loss = self.backprop_dataset_loss(batch)
                 self.modify(gradient, learning_rate / batchsize)
                 progress_bar(loss / (batchsize * self.output_size))
+        else:
+            for _ in range(cycles):
+                batch: list[DataSample] = sample(dataset, batchsize)
+                gradient = self.backprop_dataset(batch)
+                self.modify(gradient, learning_rate / batchsize)
     
     def train_momentum(self, dataset: Dataset,
                        learning_rate: float, momentum_conservation: float, 
                        cycles: int = 1, 
-                       display_progress: bool = False) -> None:
-        if display_progress == False:
+                       display_progress: bool = False, 
+                       validation_dataset: Dataset = Dataset()) -> None:
+        if validation_dataset:
+            progress_bar = ProgressBar("Momentum", cycles, True)
+            momentum = Gradient()
+            for _ in range(cycles):
+                gradient, loss = self.backprop_dataset_loss(dataset)
+                gradient += momentum * momentum_conservation
+                momentum = gradient.copy()
+                self.modify(gradient, learning_rate / len(dataset))
+                progress_bar(loss / (len(dataset) * self.output_size), self.validate(validation_dataset))
+        elif display_progress:
+            progress_bar = ProgressBar("Momentum", cycles)
+            momentum = Gradient()
+            for _ in range(cycles):
+                gradient, loss = self.backprop_dataset_loss(dataset)
+                gradient += momentum * momentum_conservation
+                momentum = gradient.copy()
+                self.modify(gradient, learning_rate / len(dataset))
+                progress_bar(loss / (len(dataset) * self.output_size))
+        else:
             momentum = Gradient()
             for _ in range(cycles):
                 gradient = self.backprop_dataset(dataset)
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / len(dataset))
-        else:
-            progress_bar = ProgressBar("Momentum", cycles)
-            momentum = Gradient()
-            for i in range(cycles):
-                gradient, loss = self.backprop_dataset_loss(dataset)
-                gradient += momentum * momentum_conservation
-                momentum = gradient.copy()
-                self.modify(gradient, learning_rate / len(dataset))
-                progress_bar(loss / (len(dataset) * self.output_size))
     
     def train_stochastic_momentum(self, dataset: Dataset,
                                   learning_rate: float, momentum_conservation: float, 
                                   cycles: int = 1, batchsize: int = 1, 
-                                  display_progress: bool = False) -> None:
-        if display_progress == False:
+                                  display_progress: bool = False, 
+                                  validation_dataset: Dataset = Dataset()) -> None:
+        if validation_dataset:
+            progress_bar = ProgressBar("Stochastic + Momentum", cycles, True)
+            momentum = Gradient()
+            for _ in range(cycles):
+                batch: list[DataSample] = sample(dataset, batchsize)
+                gradient, loss = self.backprop_dataset_loss(batch)
+                gradient += momentum * momentum_conservation
+                momentum = gradient.copy()
+                self.modify(gradient, learning_rate / batchsize)
+                progress_bar(loss / (batchsize * self.output_size), self.validate(validation_dataset))
+        elif display_progress:
+            progress_bar = ProgressBar("Stochastic + Momentum", cycles)
+            momentum = Gradient()
+            for _ in range(cycles):
+                batch: list[DataSample] = sample(dataset, batchsize)
+                gradient, loss = self.backprop_dataset_loss(batch)
+                gradient += momentum * momentum_conservation
+                momentum = gradient.copy()
+                self.modify(gradient, learning_rate / batchsize)
+                progress_bar(loss / (batchsize * self.output_size))
+        else:
             momentum = Gradient()
             for _ in range(cycles):
                 batch: list[DataSample] = sample(dataset, batchsize)
@@ -151,16 +203,6 @@ class Network:
                 gradient += momentum * momentum_conservation
                 momentum = gradient.copy()
                 self.modify(gradient, learning_rate / batchsize)
-        else:
-            progress_bar = ProgressBar("Stochastic + Momentum", cycles)
-            momentum = Gradient()
-            for i in range(cycles):
-                batch: list[DataSample] = sample(dataset, batchsize)
-                gradient, loss = self.backprop_dataset_loss(batch)
-                gradient += momentum * momentum_conservation
-                momentum = gradient.copy()
-                self.modify(gradient, learning_rate / batchsize)
-                progress_bar(loss / (batchsize * self.output_size))
 
 
 def load(filename: str) -> Network:
