@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Iterable
 from math import prod
 from .datasetClass import DataSample, Dataset
 from .gradientClass import Gradient
@@ -16,8 +15,9 @@ class Network:
         for i, layer in enumerate(layers[1:]):
             layer.set(layers[i].output_shape, weights_range, biases_range)
     
-    def copy(self) -> object:
+    def copy(self):
         net = Network(self.input_shape, [])
+        net.output_size = self.output_size
         net.layers = [layer.copy() for layer in self.layers]
         return net
     
@@ -56,7 +56,8 @@ class Network:
         gradient = Gradient()
         for data in dataset:
             gradient = self.backprop(data) + gradient
-        return gradient / len(dataset)
+        gradient /= len(dataset)
+        return gradient
 
     def backprop_dataset_loss(self, dataset: Dataset | list[DataSample]) -> tuple[Gradient, float]:
         gradient = Gradient()
@@ -64,7 +65,8 @@ class Network:
         for data in dataset:
             gradient = self.backprop(data) + gradient
             loss += self._unaverage_loss(data.output_value)
-        return gradient / len(dataset), loss
+        gradient /= len(dataset)
+        return gradient, loss
     
     def modify(self, gradient: Gradient, learning_rate: list[float]) -> None:
         gradient.apply(learning_rate)
