@@ -52,22 +52,22 @@ class Network:
         gradient.insert(0, layer_gradient)
         return gradient
     
-    def backprop_dataset(self, dataset: Iterable[DataSample]) -> Gradient:
+    def backprop_dataset(self, dataset: Dataset | list[DataSample]) -> Gradient:
         gradient = Gradient()
         for data in dataset:
             gradient = self.backprop(data) + gradient
-        return gradient
+        return gradient / len(dataset)
 
-    def backprop_dataset_loss(self, dataset: Iterable[DataSample]) -> tuple[Gradient, float]:
+    def backprop_dataset_loss(self, dataset: Dataset | list[DataSample]) -> tuple[Gradient, float]:
         gradient = Gradient()
         loss = 0
         for data in dataset:
             gradient = self.backprop(data) + gradient
             loss += self._unaverage_loss(data.output_value)
-        return gradient, loss
+        return gradient / len(dataset), loss
     
-    def modify(self, gradient: Gradient, learning_rate: float) -> None:
-        gradient *= -learning_rate
+    def modify(self, gradient: Gradient, learning_rate: list[float]) -> None:
+        gradient.apply(learning_rate)
         for layer, layer_gradient in zip(self.layers, gradient):
             layer += layer_gradient
     

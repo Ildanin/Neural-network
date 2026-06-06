@@ -10,19 +10,34 @@ class Gradient(list):
         return super().__iter__()
 
     def __add__(self, gradient: Self) -> Self:
-        for i, layer_gradient in enumerate(gradient):
-            self[i][0] += layer_gradient[0]
-            self[i][1] += layer_gradient[1]
+        for self_layer_gradient, layer_gradient in zip(self, gradient):
+            self_layer_gradient[0] += layer_gradient[0]
+            self_layer_gradient[1] += layer_gradient[1]
         return self
     
     def __iadd__(self, gradient: Self) -> Self:
         return self.__add__(gradient)
     
     def __mul__(self, coef: float) -> Self:
-        for i, layer_gradient in enumerate(self):
-            self[i][0] = coef * layer_gradient[0]
-            self[i][1] = coef * layer_gradient[1]
+        for layer_gradient in self:
+            layer_gradient[0] *= coef
+            layer_gradient[1] *= coef
+        return self
+    
+    def __truediv__(self, coef: float) -> Self:
+        for layer_gradient in self:
+            layer_gradient[0] /= coef
+            layer_gradient[1] /= coef
+        return self
+    
+    def apply(self, learning_rate: list[float]) -> Self:
+        for layer_gradient, coef in zip(self, learning_rate):
+            layer_gradient[0] *= -coef
+            layer_gradient[1] *= -coef
         return self
     
     def copy(self):
-        return Gradient(self)
+        layer_gradients = []
+        for layer_gradient in self:
+            layer_gradients.append([layer_gradient[0].copy(), layer_gradient[1].copy()])
+        return Gradient(layer_gradients)
