@@ -30,7 +30,7 @@ class Gradient(list):
             layer_gradient[1] /= coef
         return self
     
-    def apply(self, learning_rate: list[float]) -> Self:
+    def apply(self, learning_rate: ndarray) -> Self:
         for layer_gradient, coef in zip(self, learning_rate):
             layer_gradient[0] *= -coef
             layer_gradient[1] *= -coef

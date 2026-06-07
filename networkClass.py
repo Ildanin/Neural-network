@@ -68,7 +68,7 @@ class Network:
         gradient /= len(dataset)
         return gradient, loss
     
-    def modify(self, gradient: Gradient, learning_rate: list[float]) -> None:
+    def modify(self, gradient: Gradient, learning_rate: np.ndarray) -> None:
         gradient.apply(learning_rate)
         for layer, layer_gradient in zip(self.layers, gradient):
             layer += layer_gradient

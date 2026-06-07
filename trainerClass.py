@@ -3,6 +3,7 @@ from .datasetClass import Dataset, DataSample
 from .progressBar import ProgressBar
 from .gradientClass import Gradient
 from random import sample
+from numpy import zeros
 
 class Trainer:
     def __init__(self, 
@@ -14,28 +15,22 @@ class Trainer:
                  validation_dataset: Dataset = Dataset()) -> None:
         self.net = net
         self.dataset = dataset
-        if type(learning_rate) == list:
-            self.learning_rate = learning_rate
-        elif type(learning_rate) == float or type(learning_rate) == int:
-            self.learning_rate = [learning_rate for _ in range(len(self.net.layers))]
+        self.learning_rate = zeros(len(self.net.layers)) + learning_rate
         self.momentum_conservation = momentum_conservation
         self.display_progress = display_progress
         self.validation_dataset = validation_dataset
     
-    def adapt_alpha(self, step: float = 1) -> list[float]:
-        gradient, old_loss = self.net.backprop_dataset_loss(self.dataset)
-        gradient *= step
-        new_net: Network = self.net.copy()
-        k = 1
-        while True:
-            new_net.modify(gradient.copy(), self.learning_rate)
-            new_loss = new_net.validate(self.dataset)
-            print(k, new_loss)
-            if new_loss < old_loss:
-                old_loss = new_loss
-                k += step
-            else:
-                return [coef * k for coef in self.learning_rate]
+    '''def get_sludge(self, gradient: Gradient, prev_loss: float) -> None:
+        self.net.modify(gradient.copy(), self.learning_rate)
+        loss = self.net.validate(self.dataset)
+        k = 0
+        while loss < prev_loss:
+            k += 1
+            prev_loss = loss
+            self.net.modify(gradient.copy(), self.learning_rate)
+            loss = self.net.validate(self.dataset)
+        self.net.modify(gradient * -0.5, self.learning_rate)
+        print(k)'''
 
     def vanilla(self, cycles: int) -> None:
         if self.validation_dataset:
